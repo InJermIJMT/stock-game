@@ -314,6 +314,7 @@
                         <button class="tab-btn" onclick="switchTab('secretshop')">🕵️ 비밀상점</button>
                         <button class="tab-btn" onclick="switchTab('inventory')">🎒 인벤토리</button>
                         <button class="tab-btn" onclick="switchTab('gym')">🏋️ 헬스장</button>
+                        <button class="tab-btn" onclick="switchTab('gamble')">🎰 도박</button>
                     </div>
 
                     <div id="panel-bank" class="content-panel active-panel">
@@ -500,6 +501,27 @@
                                 <input type="number" id="gym-count" value="1" min="1" max="20" style="width:70px; padding:6px; text-align:center;">
                             </div>
                             <button onclick="trainGym()" style="padding: 10px 20px; font-size: 1.1em; background-color: #e67e22;">헬스장에서 운동하기</button>
+                        </div>
+                    </div>
+
+                    <div id="panel-gamble" class="content-panel">
+                        <h3>🎰 도박장 (성공 시 베팅금 ×3, 실패 시 0)</h3>
+                        <p style="margin-bottom:10px;">원하는 게임을 선택하세요. 진행 과정을 실시간으로 볼 수 있습니다.</p>
+                        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                            <button onclick="openGambleGame('ladder')" style="flex:1; min-width:120px; padding:12px; background:#9b59b6;">🪜 사다리</button>
+                            <button onclick="openGambleGame('snail')" style="flex:1; min-width:120px; padding:12px; background:#16a085;">🐌 달팽이 레이스</button>
+                            <button onclick="openGambleGame('blackjack')" style="flex:1; min-width:120px; padding:12px; background:#2c3e50;">🃏 블랙잭</button>
+                        </div>
+                        <div id="gamble-arena" style="display:none; background:#1a1a2e; color:#eee; border-radius:10px; padding:16px; min-height:280px;">
+                            <div id="gamble-title" style="font-size:1.2em; font-weight:bold; margin-bottom:10px; text-align:center;"></div>
+                            <div style="margin-bottom:12px; text-align:center;">
+                                <label>베팅 금액: </label>
+                                <input type="number" id="gamble-bet" value="10000" min="1000" style="width:140px; padding:6px; text-align:center;">
+                                <button onclick="setGambleBetMax()" style="margin-left:6px;">풀베팅</button>
+                            </div>
+                            <div id="gamble-stage" style="background:#16213e; border-radius:8px; padding:12px; min-height:160px; margin-bottom:12px; font-family:monospace; white-space:pre-wrap; overflow:auto;"></div>
+                            <div id="gamble-controls" style="text-align:center; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"></div>
+                            <div id="gamble-result" style="text-align:center; margin-top:10px; font-size:1.1em; font-weight:bold;"></div>
                         </div>
                     </div>
 
@@ -1479,7 +1501,6 @@
                 if (!qtyStr) return;
                 let qty = parseInt(qtyStr);
                 if (isNaN(qty) || qty <= 0) { alert("올바른 수량을 입력하세요."); return; }
-                if (qty > 1000) { alert("한 번에 최대 1,000장까지 구매할 수 있습니다."); return; }
                 let total = qty * item.price;
                 if (cash < total) { alert(`현금이 부족합니다! (필요: ${total.toLocaleString()}원)`); return; }
                 cash -= total;
@@ -1716,7 +1737,9 @@
                                 </td>
                                 <td>
                                     <button onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); buyAsset('${typeName}', ${item.id});">매수</button>
+                                    <button onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); buyAssetFull('${typeName}', ${item.id});" style="background:#27ae60; font-size:0.8em;">풀매수</button>
                                     <button class="sell" onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); sellAsset('${typeName}', ${item.id});">매도</button>
+                                    <button class="sell" onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); sellAssetFull('${typeName}', ${item.id});" style="font-size:0.8em;">풀매도</button>
                                 </td>
                             </tr>
                         `;
@@ -1894,6 +1917,306 @@
 
                 render();
             } else { alert("보유 수량이 부족합니다!"); }
+        }
+
+        function buyAssetFull(typeName, id) {
+            if (checkFaintingState()) return;
+            let list = getMarketList(typeName);
+            let item = list.find(s => s.id === id);
+            if (!item || item.delisted) { alert("거래할 수 없는 종목입니다."); return; }
+            if (item.price <= 0) return;
+            let qty = Math.floor(cash / item.price);
+            if (qty <= 0) { alert("현금이 부족하여 1주도 살 수 없습니다!"); return; }
+            let qtyInput = document.getElementById(`${typeName}-qty-${id}`);
+            if (qtyInput) qtyInput.value = qty;
+            pendingQty[`${typeName}-${id}`] = qty;
+            buyAsset(typeName, id);
+        }
+
+        function sellAssetFull(typeName, id) {
+            if (checkFaintingState()) return;
+            let list = getMarketList(typeName);
+            let item = list.find(s => s.id === id);
+            if (!item || item.owned <= 0) { alert("보유 수량이 없습니다!"); return; }
+            let qtyInput = document.getElementById(`${typeName}-qty-${id}`);
+            if (qtyInput) qtyInput.value = item.owned;
+            pendingQty[`${typeName}-${id}`] = item.owned;
+            sellAsset(typeName, id);
+        }
+
+        // ========== 도박 시스템 ==========
+        let gambleBusy = false;
+        let currentGamble = null;
+        let bjState = null;
+
+        function setGambleBetMax() {
+            document.getElementById('gamble-bet').value = Math.max(0, cash);
+        }
+
+        function openGambleGame(type) {
+            if (checkFaintingState()) return;
+            currentGamble = type;
+            gambleBusy = false;
+            bjState = null;
+            const arena = document.getElementById('gamble-arena');
+            arena.style.display = 'block';
+            document.getElementById('gamble-result').innerText = '';
+            document.getElementById('gamble-stage').innerText = '';
+            const titles = { ladder: '🪜 사다리 타기', snail: '🐌 달팽이 레이스', blackjack: '🃏 블랙잭' };
+            document.getElementById('gamble-title').innerText = titles[type] || type;
+            const ctrl = document.getElementById('gamble-controls');
+            if (type === 'ladder') {
+                ctrl.innerHTML = `
+                    <button onclick="startLadder(0)" style="background:#e74c3c;">왼쪽 출발</button>
+                    <button onclick="startLadder(1)" style="background:#3498db;">가운데 출발</button>
+                    <button onclick="startLadder(2)" style="background:#2ecc71;">오른쪽 출발</button>
+                `;
+                document.getElementById('gamble-stage').innerText = '출발 라인을 선택하세요.\n성공 시 베팅금 ×3, 실패 시 전부 손실';
+            } else if (type === 'snail') {
+                ctrl.innerHTML = `
+                    <button onclick="startSnail(0)">🐌1번</button>
+                    <button onclick="startSnail(1)">🐌2번</button>
+                    <button onclick="startSnail(2)">🐌3번</button>
+                    <button onclick="startSnail(3)">🐌4번</button>
+                `;
+                document.getElementById('gamble-stage').innerText = '응원할 달팽이를 고르세요.\n1등 달팽이를 맞히면 베팅금 ×3';
+            } else if (type === 'blackjack') {
+                ctrl.innerHTML = `<button onclick="startBlackjack()" style="background:#27ae60; padding:10px 20px;">게임 시작 (딜러와 대결)</button>`;
+                document.getElementById('gamble-stage').innerText = '21에 가까운 쪽이 승리합니다.\n버스트(21 초과) 시 패배. 성공 시 ×3';
+            }
+        }
+
+        function getGambleBet() {
+            let bet = parseInt(document.getElementById('gamble-bet').value);
+            if (isNaN(bet) || bet <= 0) { alert("올바른 베팅 금액을 입력하세요."); return null; }
+            if (cash < bet) { alert("현금이 부족합니다!"); return null; }
+            return bet;
+        }
+
+        function finishGamble(win, bet) {
+            gambleBusy = false;
+            if (win) {
+                cash += bet * 3;
+                document.getElementById('gamble-result').innerHTML = `<span style="color:#2ecc71;">🎉 성공! +${(bet * 3).toLocaleString()}원 (×3)</span>`;
+                addLog(`[도박 승리] ${(bet * 3).toLocaleString()}원을 획득했습니다!`, "good");
+            } else {
+                document.getElementById('gamble-result').innerHTML = `<span style="color:#e74c3c;">💸 실패... -${bet.toLocaleString()}원</span>`;
+                addLog(`[도박 패배] ${bet.toLocaleString()}원을 잃었습니다.`, "bad");
+            }
+            render();
+        }
+
+        // ----- 사다리 -----
+        async function startLadder(startCol) {
+            if (gambleBusy) return;
+            const bet = getGambleBet();
+            if (bet === null) return;
+            cash -= bet;
+            gambleBusy = true;
+            document.getElementById('gamble-controls').innerHTML = '';
+            document.getElementById('gamble-result').innerText = '진행 중...';
+            render();
+
+            const cols = 3, rows = 8;
+            // 가로줄 생성
+            let bridges = [];
+            for (let r = 0; r < rows; r++) {
+                let b = [];
+                for (let c = 0; c < cols - 1; c++) b.push(Math.random() < 0.45);
+                // 연속 가로줄 방지
+                for (let c = 1; c < b.length; c++) if (b[c] && b[c-1]) b[c] = false;
+                bridges.push(b);
+            }
+
+            let path = [];
+            let col = startCol;
+            path.push({ r: 0, c: col });
+            for (let r = 0; r < rows; r++) {
+                if (col > 0 && bridges[r][col - 1]) col -= 1;
+                else if (col < cols - 1 && bridges[r][col]) col += 1;
+                path.push({ r: r + 1, c: col });
+            }
+
+            // 당첨 칸 (랜덤 1개)
+            const winCol = Math.floor(Math.random() * cols);
+            const stage = document.getElementById('gamble-stage');
+
+            // 애니메이션: 한 칸씩 그리기
+            for (let step = 0; step <= rows; step++) {
+                let lines = [];
+                lines.push('   [0]     [1]     [2]');
+                lines.push('    |       |       |');
+                for (let r = 0; r < rows; r++) {
+                    let rowStr = '    ';
+                    for (let c = 0; c < cols; c++) {
+                        const onPath = path.slice(0, step + 1).some(p => p.r === r && p.c === c);
+                        const mark = onPath ? '●' : '|';
+                        rowStr += mark;
+                        if (c < cols - 1) rowStr += bridges[r][c] ? '-------' : '       ';
+                    }
+                    lines.push(rowStr);
+                    // 세로
+                    let vert = '    ';
+                    for (let c = 0; c < cols; c++) {
+                        const onPath = path.slice(0, step + 1).some(p => p.r === r + 1 && p.c === c) && step > r;
+                        vert += (onPath ? '●' : '|');
+                        if (c < cols - 1) vert += '       ';
+                    }
+                    if (r < rows - 1 || step >= r) lines.push(vert);
+                }
+                // 결과 라인
+                let bottom = '   ';
+                for (let c = 0; c < cols; c++) {
+                    bottom += (c === winCol ? '[당첨]' : '[꽝]  ');
+                    bottom += '  ';
+                }
+                lines.push(bottom);
+                lines.push(`\n현재 위치: 열 ${path[Math.min(step, path.length-1)].c}`);
+                stage.innerText = lines.join('\n');
+                await new Promise(res => setTimeout(res, 280));
+            }
+
+            const finalCol = path[path.length - 1].c;
+            const win = (finalCol === winCol);
+            finishGamble(win, bet);
+            document.getElementById('gamble-controls').innerHTML = `<button onclick="openGambleGame('ladder')">다시하기</button>`;
+        }
+
+        // ----- 달팽이 레이스 -----
+        async function startSnail(pick) {
+            if (gambleBusy) return;
+            const bet = getGambleBet();
+            if (bet === null) return;
+            cash -= bet;
+            gambleBusy = true;
+            document.getElementById('gamble-controls').innerHTML = '';
+            document.getElementById('gamble-result').innerText = '레이스 진행 중...';
+            render();
+
+            const names = ['🐌1', '🐌2', '🐌3', '🐌4'];
+            let pos = [0, 0, 0, 0];
+            const finish = 20;
+            const stage = document.getElementById('gamble-stage');
+
+            while (Math.max(...pos) < finish) {
+                for (let i = 0; i < 4; i++) {
+                    pos[i] += Math.random() < 0.55 ? 1 : (Math.random() < 0.3 ? 2 : 0);
+                    if (pos[i] > finish) pos[i] = finish;
+                }
+                let lines = ['=== 달팽이 레이스 ===', ''];
+                for (let i = 0; i < 4; i++) {
+                    const bar = '·'.repeat(pos[i]) + names[i] + '·'.repeat(Math.max(0, finish - pos[i]));
+                    const mark = (i === pick) ? ' ← 내 선택' : '';
+                    lines.push(`[${i + 1}] ${bar}${mark}`);
+                }
+                stage.innerText = lines.join('\n');
+                await new Promise(res => setTimeout(res, 200));
+            }
+
+            let winner = 0;
+            for (let i = 1; i < 4; i++) if (pos[i] > pos[winner]) winner = i;
+            const win = (winner === pick);
+            stage.innerText += `\n\n🏆 우승: ${names[winner]}`;
+            finishGamble(win, bet);
+            document.getElementById('gamble-controls').innerHTML = `<button onclick="openGambleGame('snail')">다시하기</button>`;
+        }
+
+        // ----- 블랙잭 -----
+        function cardValue(card) {
+            if (card >= 10) return 10;
+            return card;
+        }
+        function handTotal(cards) {
+            let t = 0, aces = 0;
+            cards.forEach(c => {
+                if (c === 1) { aces++; t += 11; }
+                else t += cardValue(c);
+            });
+            while (t > 21 && aces > 0) { t -= 10; aces--; }
+            return t;
+        }
+        function cardName(c) {
+            if (c === 1) return 'A';
+            if (c === 11) return 'J';
+            if (c === 12) return 'Q';
+            if (c === 13) return 'K';
+            return String(c);
+        }
+        function drawCard() { return Math.floor(Math.random() * 13) + 1; }
+
+        function renderBJ() {
+            if (!bjState) return;
+            const p = bjState.player.map(cardName).join(' ');
+            const d = bjState.done
+                ? bjState.dealer.map(cardName).join(' ')
+                : (cardName(bjState.dealer[0]) + ' ??');
+            const pt = handTotal(bjState.player);
+            const dt = bjState.done ? handTotal(bjState.dealer) : '?';
+            document.getElementById('gamble-stage').innerText =
+                `딜러: [${d}]  (합: ${dt})\n플레이어: [${p}]  (합: ${pt})\n\n베팅: ${bjState.bet.toLocaleString()}원`;
+        }
+
+        function startBlackjack() {
+            if (gambleBusy) return;
+            const bet = getGambleBet();
+            if (bet === null) return;
+            cash -= bet;
+            gambleBusy = true;
+            render();
+            bjState = {
+                bet,
+                player: [drawCard(), drawCard()],
+                dealer: [drawCard(), drawCard()],
+                done: false
+            };
+            renderBJ();
+            const pt = handTotal(bjState.player);
+            if (pt === 21) {
+                // 플레이어 블랙잭 → 딜러 확인
+                endBlackjack();
+                return;
+            }
+            document.getElementById('gamble-controls').innerHTML = `
+                <button onclick="bjHit()" style="background:#e67e22;">히트 (카드 추가)</button>
+                <button onclick="bjStand()" style="background:#27ae60;">스탠드 (멈추기)</button>
+            `;
+            document.getElementById('gamble-result').innerText = '히트 또는 스탠드를 선택하세요.';
+        }
+
+        function bjHit() {
+            if (!bjState || bjState.done) return;
+            bjState.player.push(drawCard());
+            renderBJ();
+            if (handTotal(bjState.player) > 21) {
+                bjState.done = true;
+                renderBJ();
+                finishGamble(false, bjState.bet);
+                document.getElementById('gamble-controls').innerHTML = `<button onclick="openGambleGame('blackjack')">다시하기</button>`;
+            }
+        }
+
+        function bjStand() {
+            if (!bjState || bjState.done) return;
+            endBlackjack();
+        }
+
+        function endBlackjack() {
+            if (!bjState) return;
+            bjState.done = true;
+            // 딜러는 17 이상까지
+            while (handTotal(bjState.dealer) < 17) {
+                bjState.dealer.push(drawCard());
+            }
+            renderBJ();
+            const pt = handTotal(bjState.player);
+            const dt = handTotal(bjState.dealer);
+            let win = false;
+            if (pt > 21) win = false;
+            else if (dt > 21) win = true;
+            else if (pt > dt) win = true;
+            else win = false; // 동점 포함 패배 (단순화: 성공만 ×3)
+            finishGamble(win, bjState.bet);
+            document.getElementById('gamble-controls').innerHTML = `<button onclick="openGambleGame('blackjack')">다시하기</button>`;
         }
     </script>
 </body>
