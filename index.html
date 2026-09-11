@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주식으로 살아남기 - 100조의 꿈</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --container-bg: #f8f9fa;
+            --text-color: #333333;
+            --border-color: #ddd;
+            --table-header: #f1f3f5;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; 
+            padding: 20px; 
+            color: var(--text-color); 
+            transition: background 0.3s, color 0.3s, filter 0.3s; 
+        }
+        
+        .container { max-width: 1750px; margin: 0 auto; background: var(--container-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        .lobby-container { text-align: center; padding: 40px 0; }
+        .lobby-container h1 { font-size: 2.8em; color: #2c3e50; margin-bottom: 40px; font-weight: 800; }
+        .btn-menu { display: block; width: 240px; margin: 15px auto; padding: 15px; font-size: 1.1em; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+        .btn-menu:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-start { background-color: #27ae60; color: white; font-size: 1.3em; }
+        .btn-settings { background-color: #34495e; color: white; }
+
+        .file-select-container { text-align: center; padding: 20px 0; }
+        .file-select-container h2 { margin-bottom: 30px; color: #2c3e50; }
+        .file-slot { background: white; border: 2px solid var(--border-color); padding: 20px; border-radius: 10px; margin: 15px auto; max-width: 500px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .file-info { text-align: left; font-size: 0.95em; }
+        .file-info strong { display: block; font-size: 1.1em; margin-bottom: 5px; color: #2980b9; }
+        .file-buttons button { padding: 8px 12px; margin-left: 5px; font-size: 0.9em; }
+        .btn-load { background-color: #2980b9; }
+        .btn-save { background-color: #e67e22; }
+        .btn-delete { background-color: #e74c3c; }
+
+        .profile-container { text-align: center; padding: 30px 0; }
+        .profile-box { background: white; border: 1px solid var(--border-color); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .profile-box h2 { color: #2c3e50; margin-bottom: 20px; font-size: 1.4em; }
+        .profile-box input { width: 80%; padding: 12px; margin: 15px 0 20px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 1.1em; text-align: center; }
+        
+        .gender-options { display: flex; justify-content: center; gap: 20px; margin: 25px 0; }
+        .gender-btn { background: #ecf0f1; border: 2px solid #bdc3c7; color: #333; padding: 15px 25px; border-radius: 10px; font-size: 1.2em; cursor: pointer; transition: all 0.2s; }
+        .gender-btn.selected { background: #3498db; color: white; border-color: #2980b9; }
+
+        .settings-panel { text-align: left; max-width: 400px; margin: 0 auto; padding: 20px; }
+        .setting-group { margin-bottom: 25px; }
+        .setting-group label { display: block; font-weight: bold; margin-bottom: 8px; }
+        .setting-group input[type="range"] { width: 100%; cursor: pointer; }
+        .setting-group input[type="color"] { width: 100%; height: 40px; border: none; border-radius: 6px; cursor: pointer; }
+
+        .game-layout { display: flex; gap: 15px; align-items: flex-start; }
+        
+        .log-sidebar { width: 260px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; height: 680px; display: flex; flex-direction: column; }
+        .log-sidebar h3 { margin-top: 0; color: #2c3e50; font-size: 1.05em; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        .log-content { flex: 1; overflow-y: auto; font-size: 0.8em; display: flex; flex-direction: column; gap: 6px; background: #fdfdfd; padding: 6px; border: 1px solid #eee; border-radius: 4px; }
+        .log-item { padding: 5px 7px; border-radius: 4px; background: #f1f3f5; line-height: 1.3; }
+        .log-item.news { background: #e8f4fd; border-left: 3px solid #3498db; font-weight: bold; }
+        .log-item.bad { background: #fde8e8; border-left: 3px solid #e74c3c; }
+        .log-item.good { background: #e8f8f0; border-left: 3px solid #2ecc71; }
+
+        .main-game-area { flex: 1; min-width: 0; }
+
+        .chart-sidebar { width: 340px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; height: 680px; display: flex; flex-direction: column; }
+        .chart-sidebar h3 { margin-top: 0; color: #2c3e50; font-size: 1.05em; border-bottom: 2px solid #eee; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .chart-container { flex: 1; background: #1e1e1e; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; position: relative; overflow: hidden; margin-top: 10px; }
+        .chart-canvas-box { flex: 1; position: relative; width: 100%; min-height: 250px; }
+        canvas { width: 100% !important; height: 100% !important; }
+        .chart-info { margin-top: 10px; font-size: 0.85em; color: #bbb; line-height: 1.4; background: #2a2a2a; padding: 8px; border-radius: 4px; }
+        .chart-info span { color: #fff; font-weight: bold; }
+
+        h1.game-title { text-align: center; margin-bottom: 12px; }
+        .user-info-banner { text-align: center; font-size: 1.05em; font-weight: bold; margin-bottom: 10px; color: #34495e; }
+        
+        .room {
+            position: relative;
+            width: 100%;
+            height: 130px;
+            background: #eef2f3;
+            border: 3px solid #bdc3c7;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .character-container {
+            position: absolute;
+            bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            will-change: left;
+        }
+        .hp-bar-wrapper {
+            width: 40px;
+            height: 6px;
+            background: #ccc;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 2px;
+            border: 1px solid #999;
+        }
+        .hp-bar-fill {
+            height: 100%;
+            background: #2ecc71;
+            width: 100%;
+            transition: width 0.3s;
+        }
+        .character { font-size: 2em; }
+        .room-furniture {
+            position: absolute;
+            bottom: 8px;
+            font-size: 1.8em;
+            display: none;
+        }
+        #furniture-bed { right: 20px; }
+        #furniture-pc { right: 70px; }
+        #furniture-chair { right: 120px; }
+        #furniture-buff { right: 170px; font-size: 1.5em; }
+
+        .status-bar { display: flex; justify-content: space-between; background: #2c3e50; color: white; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9em; }
+        .status-item { text-align: center; }
+        .status-item span { display: block; font-size: 1.05em; font-weight: bold; margin-top: 2px; color: #e74c3c; }
+        .status-item span.positive { color: #2ecc71; }
+        
+        .timer-bar { background: #e67e22; color: white; text-align: center; padding: 7px; border-radius: 6px; font-weight: bold; margin-bottom: 12px; font-size: 0.9em; }
+
+        .content-tabs { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 75px; padding: 8px; background: #95a5a6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.9em; }
+        .tab-btn:hover { background: #7f8c8d; }
+        .tab-btn.active-tab { background: #2980b9; }
+
+        .content-panel { display: none; background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px; min-height: 220px; max-height: 380px; overflow-y: auto; }
+        .content-panel.active-panel { display: block; }
+
+        .game-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .game-table th, .game-table td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border-color); font-size: 0.9em; }
+        .game-table th { background-color: var(--table-header); color: var(--text-color); position: sticky; top: 0; z-index: 2; }
+        .game-table tbody tr { cursor: pointer; transition: background 0.15s; }
+        .game-table tbody tr:hover { background-color: #f1f3f5; }
+        .game-table tbody tr.selected-row { background-color: #e3f2fd !important; font-weight: bold; }
+        
+        button { background-color: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.9em; }
+        button:hover { background-color: #2980b9; }
+        button.sell { background-color: #e74c3c; }
+        button.sell:hover { background-color: #c0392b; }
+        button.disabled-btn { background-color: #95a5a6 !important; cursor: not-allowed; }
+        
+        .controls { text-align: center; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-back { background-color: #95a5a6; }
+        
+        .trade-group { display: flex; gap: 4px; justify-content: center; align-items: center; }
+        .trade-input { width: 60px; padding: 3px; text-align: center; }
+
+        .labor-sub-tabs { display: flex; gap: 10px; margin-bottom: 12px; }
+        .labor-sub-btn { flex: 1; padding: 6px; background: #bdc3c7; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: #333; }
+        .labor-sub-btn.active { background: #27ae60; color: white; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body id="main-body">
+    <div class="container" id="main-container">
+        
+        <div id="lobby-screen" class="screen active">
+            <div class="lobby-container">
+                <h1>주식으로 살아남기: 100조의 꿈</h1>
+                <button class="btn-menu btn-start" onclick="openFileSelect()">게임 시작</button>
+                <button class="btn-menu btn-settings" onclick="openSettings()">설정</button>
+            </div>
+        </div>
+
+        <div id="file-screen" class="screen">
+            <div class="file-select-container">
+                <h2>📁 플레이할 저장 파일 선택</h2>
+                
+                <div class="file-slot" id="slot-1">
+                    <div class="file-info" id="info-1"><strong>파일 슬롯 1</strong>데이터 없음</div>
+                    <div class="file-buttons">
+                        <button class="btn-load" onclick="selectSlot(1)">불러오기 / 시작</button>
+                        <button class="btn-save" onclick="saveFile(1)">저장</button>
+                        <button class="btn-delete" onclick="deleteFile(1)">삭제</button>
+                    </div>
+                </div>
+
+                <div class="file-slot" id="slot-2">
+                    <div class="file-info" id="info-2"><strong>파일 슬롯 2</strong>데이터 없음</div>
+                    <div class="file-buttons">
+                        <button class="btn-load" onclick="selectSlot(2)">불러오기 / 시작</button>
+                        <button class="btn-save" onclick="saveFile(2)">저장</button>
+                        <button class="btn-delete" onclick="deleteFile(2)">삭제</button>
+                    </div>
+                </div>
+
+                <div class="file-slot" id="slot-3">
+                    <div class="file-info" id="info-3"><strong>파일 슬롯 3</strong>데이터 없음</div>
+                    <div class="file-buttons">
+                        <button class="btn-load" onclick="selectSlot(3)">불러오기 / 시작</button>
+                        <button class="btn-save" onclick="saveFile(3)">저장</button>
+                        <button class="btn-delete" onclick="deleteFile(3)">삭제</button>
+                    </div>
+                </div>
+
+                <div class="controls" style="justify-content: center; margin-top: 30px;">
+                    <button class="btn-back" onclick="goToLobby()" style="padding: 10px 30px;">메인으로</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="name-screen" class="screen">
+            <div class="profile-container">
+                <div class="profile-box">
+                    <h2>사용자님의 이름은?</h2>
+                    <input type="text" id="temp-name-input" placeholder="이름을 입력하세요">
+                    <br>
+                    <button class="btn-start" onclick="proceedToGender()" style="width: 100%; padding: 12px;">다음</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gender-screen" class="screen">
+            <div class="profile-container">
+                <div class="profile-box">
+                    <h2>사용자님의 성별은?</h2>
+                    <div class="gender-options">
+                        <div class="gender-btn selected" id="btn-male" onclick="selectGender('male')">남성 👦</div>
+                        <div class="gender-btn" id="btn-female" onclick="selectGender('female')">여성 👧</div>
+                    </div>
+                    <button class="btn-start" onclick="completeProfileSetup()" style="width: 100%; padding: 12px; margin-top: 10px;">입주 및 게임 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-screen" class="screen">
+            <h1 class="game-title">⚙️ 게임 설정</h1>
+            <div class="settings-panel">
+                <div class="setting-group">
+                    <label>화면 밝기 조절 (<span id="brightness-val">100</span>%)</label>
+                    <input type="range" id="brightness-range" min="50" max="150" value="100" oninput="changeBrightness(this.value)">
+                </div>
+                <div class="setting-group">
+                    <label>배경 색상 조절</label>
+                    <input type="color" id="color-picker" value="#ffffff" oninput="changeBackgroundColor(this.value)">
+                </div>
+                <div class="controls" style="justify-content: center; margin-top: 30px;">
+                    <button class="btn-back" onclick="closeSettings()" style="padding: 10px 30px;">돌아가기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <h1 class="game-title">📈 주식으로 살아남기: 100조</h1>
+            <div class="user-info-banner" id="user-info-display">플레이어: </div>
+
+            <div class="game-layout">
+                <div class="log-sidebar">
+                    <h3>📜 실시간 경제 로그</h3>
+                    <div class="log-content" id="log-content">
+                        <div class="log-item">게임 시작! (대출한도: 은행 1천만원, 담보 1억원)</div>
+                    </div>
+                </div>
+
+                <div class="main-game-area">
+                    <div class="timer-bar" id="timer-bar">⏳ 남은 시간: 60초 (Day 1) | 주이자 적용까지 남은 턴: 7회</div>
+
+                    <div class="room">
+                        <div id="character-box" class="character-container" style="left: 10px;">
+                            <div class="hp-bar-wrapper"><div class="hp-bar-fill" id="hp-bar-fill"></div></div>
+                            <div id="character" class="character">🧑</div>
+                        </div>
+                        <div id="furniture-bed" class="room-furniture">🛏️</div>
+                        <div id="furniture-pc" class="room-furniture">💻</div>
+                        <div id="furniture-chair" class="room-furniture">🪑</div>
+                        <div id="furniture-buff" class="room-furniture">✨</div>
+                    </div>
+                    
+                    <div class="status-bar">
+                        <div class="status-item">현금 잔고<span id="cash">0</span>원</div>
+                        <div class="status-item">총 자산<span id="total-asset">0</span>원</div>
+                        <div class="status-item">체력<span id="hp-status">10 / 10</span></div>
+                        <div class="status-item">목표<span id="target-view">100,000,000,000,000</span>원</div>
+                    </div>
+
+                    <div class="content-tabs">
+                        <button class="tab-btn active-tab" onclick="switchTab('bank')">🏦 은행</button>
+                        <button class="tab-btn" onclick="switchTab('kstock')">🇰🇷 한국주식</button>
+                        <button class="tab-btn" onclick="switchTab('ustock')">🇺🇸 미국주식</button>
+                        <button class="tab-btn" onclick="switchTab('crypto')">🪙 비트코인</button>
+                        <button class="tab-btn" onclick="switchTab('job')">💼 노동</button>
+                        <button class="tab-btn" onclick="switchTab('shop')">🛒 상점</button>
+                        <button class="tab-btn" onclick="switchTab('secretshop')">🕵️ 비밀상점</button>
+                        <button class="tab-btn" onclick="switchTab('inventory')">🎒 인벤토리</button>
+                        <button class="tab-btn" onclick="switchTab('gym')">🏋️ 헬스장</button>
+                    </div>
+
+                    <div id="panel-bank" class="content-panel active-panel">
+                        <h3>🏦 하나은행 금융 서비스</h3>
+                        <div id="bank-normal-section">
+                            <p>예치금 잔액: <strong id="bank-balance">0</strong>원 (연이자율 복리)</p>
+                            <div style="margin-bottom: 12px;">
+                                <input type="number" id="bank-amount" placeholder="금액 입력" style="padding: 5px; width: 140px;">
+                                <button onclick="depositBank()">입금</button>
+                                <button class="sell" onclick="withdrawBank()">출금</button>
+                            </div>
+                            <hr style="border: 0; border-top: 1px solid #eee; margin: 12px 0;">
+                            <p>일반 대출 (주이자 10%, 한도: 10,000,000원): <strong id="loan-balance">0</strong>원 / 10,000,000원</p>
+                            <div>
+                                <input type="number" id="loan-amount" placeholder="금액 입력" style="padding: 5px; width: 140px;">
+                                <button onclick="takeLoan()">대출 받기</button>
+                                <button class="sell" onclick="repayLoan()">대출 상환</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <button id="btn-collateral" style="background-color: #7f8c8d; width: 100%; padding: 10px; font-size: 1em;" onclick="takeCollateralLoan()">담보 대출 받기 (주이자 20%, 한도: 100,000,000원)</button>
+                            <p id="collateral-status" style="font-size: 0.8em; color: #e74c3c; margin-top: 4px;"></p>
+                        </div>
+                    </div>
+
+                    <div id="panel-kstock" class="content-panel">
+                        <h3>🇰🇷 한국 주식 시장 <span style="font-size:0.75em; color:#666; font-weight:normal;">(항목을 클릭하면 우측에 그래프가 표시됩니다)</span></h3>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>종목명</th>
+                                    <th>현재가 (평단가)</th>
+                                    <th>보유 수량</th>
+                                    <th>수량 입력 / 필요 금액</th>
+                                    <th>거래</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kstock-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-ustock" class="content-panel">
+                        <h3>🇺🇸 미국 주식 시장 <span style="font-size:0.75em; color:#666; font-weight:normal;">(항목을 클릭하면 우측에 그래프가 표시됩니다)</span></h3>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>종목명</th>
+                                    <th>현재가 (평단가)</th>
+                                    <th>보유 수량</th>
+                                    <th>수량 입력 / 필요 금액</th>
+                                    <th>거래</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ustock-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-crypto" class="content-panel">
+                        <h3>🪙 코인 거래소 <span style="font-size:0.75em; color:#666; font-weight:normal;">(항목을 클릭하면 우측에 그래프가 표시됩니다)</span></h3>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>종목명</th>
+                                    <th>현재가 (평단가)</th>
+                                    <th>보유 수량</th>
+                                    <th>수량 입력 / 필요 금액</th>
+                                    <th>거래</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crypto-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-job" class="content-panel">
+                        <h3>💼 노동 및 커리어 센터</h3>
+                        <div class="labor-sub-tabs">
+                            <button class="labor-sub-btn active" id="btn-sub-parttime" onclick="switchLaborTab('parttime')">아르바이트</button>
+                            <button class="labor-sub-btn" id="btn-sub-career" onclick="switchLaborTab('career')">회사 취직</button>
+                        </div>
+
+                        <div id="labor-parttime-section">
+                            <p>단기 노동을 통해 즉시 현금과 수당을 얻지만 체력이 소모됩니다.</p>
+                            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px; border-radius:4px;">
+                                    <span>편의점 알바 (수당: 600,000원 | 체력 소모: 2)</span>
+                                    <button onclick="doPartTimeJob('편의점 알바', 600000, 2)">근무하기</button>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px; border-radius:4px;">
+                                    <span>택배 상하차 (수당: 1,600,000원 | 체력 소모: 5)</span>
+                                    <button onclick="doPartTimeJob('택배 상하차', 1600000, 5)">근무하기</button>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px; border-radius:4px;">
+                                    <span>대기업 단기 인턴 (수당: 6,000,000원 | 체력 소모: 8)</span>
+                                    <button onclick="doPartTimeJob('대기업 단기 인턴', 6000000, 8)">근무하기</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="labor-career-section" style="display:none;">
+                            <p>회사를 지원하여 취직하세요. 취직 시 턴(60초)마다 급여가 지급됩니다. (현재 스펙 중첩: <strong id="spec-count">0</strong>개 | 확률 기여도: +<span id="spec-bonus-rate">0</span>%)</p>
+                            <p id="job-cooldown-notice" style="color: #e67e22; font-weight: bold; margin-bottom: 8px;"></p>
+                            <div id="current-job-banner" style="background:#e8f8f0; padding:8px; border-radius:4px; margin-bottom:10px; font-weight:bold; color:#27ae60;">현재 재직 중인 회사: 없음</div>
+                            <table class="game-table">
+                               <thead>
+                                   <tr>
+                                       <th>회사명</th>
+                                       <th>급여 조건</th>
+                                       <th>기본 성공확률</th>
+                                       <th>지원</th>
+                                   </tr>
+                               </thead>
+                               <tbody id="company-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="panel-shop" class="content-panel">
+                        <h3>🛒 가구 상점 (매일 자정/새로운 날 3개 무작위 재입고)</h3>
+                        <p>방을 꾸밀 가구를 구매하여 특수 효과를 누리세요!</p>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>가구명</th>
+                                    <th>효과</th>
+                                    <th>가격</th>
+                                    <th>구매</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shop-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-secretshop" class="content-panel">
+                        <h3>🕵️ 비밀 상점 (3일마다 새로운 품목 재입고)</h3>
+                        <p>일반 상점에 없는 강력한 특수 아이템과 호재/악재 발생기를 구매할 수 있습니다.</p>
+                        <p id="secret-shop-timer" style="color: #8e44ad; font-weight: bold; margin-bottom: 10px;"></p>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>아이템명</th>
+                                    <th>설명</th>
+                                    <th>가격</th>
+                                    <th>구매</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secret-shop-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-inventory" class="content-panel">
+                        <h3>🎒 인벤토리 (보유 특수 아이템)</h3>
+                        <p>비밀 상점에서 구매한 아이템을 이곳에서 확인하고 사용할 수 있습니다.</p>
+                        <table class="game-table">
+                            <thead>
+                                <tr>
+                                    <th>아이템명</th>
+                                    <th>설명</th>
+                                    <th>보유 개수</th>
+                                    <th>사용</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-list"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="panel-gym" class="content-panel">
+                        <h3>🏋️ 피트니스 헬스장</h3>
+                        <p>운동을 통해 신체 능력을 단련하고 최대 체력을 영구적으로 증가시킵니다.</p>
+                        <div style="background:#f1f3f5; padding: 15px; border-radius: 6px; margin-top: 15px; text-align: center;">
+                            <p style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px;">현재 최대 체력: <span id="gym-max-hp" style="color:#27ae60;">10</span></p>
+                            <p style="font-size: 0.9em; color: #555; margin-bottom: 15px;">운동 비용: 현금 200,000원 | 체력 소모: 3<br>효과: 최대 체력 +2 증가 및 즉시 체력 회복</p>
+                            <button onclick="trainGym()" style="padding: 10px 20px; font-size: 1.1em; background-color: #e67e22;">헬스장에서 운동하기</button>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="btn-back" onclick="openFileSelect()">파일선택으로</button>
+                        <button class="btn-back" onclick="RestInBed()" style="background-color: #27ae60;">🛏️ 침대에서 휴식 (하루 스킵 & 체력 회복)</button>
+                    </div>
+                </div>
+
+                <div class="chart-sidebar">
+                    <h3>📊 실시간 차트 모니터</h3>
+                    <div class="chart-container">
+                        <div class="chart-canvas-box">
+                            <canvas id="assetChart"></canvas>
+                        </div>
+                        <div class="chart-info" id="chart-info-box">
+                            선택된 종목: <span id="selected-chart-name">없음</span><br>
+                            현재가: <span id="selected-chart-price">0</span>원
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cash = 0;
+        let bankBalance = 0;
+        let loanBalance = 0; 
+        let collateralLoanBalance = 0;
+        let collateralLockDays = 0;
+        
+        let maxHp = 10;
+        let hp = 10;
+        let isFainting = false;
+        let faintingDaysLeft = 0;
+
+        let specCount = 0;
+        let specTurnCounter = 0;
+        let currentEmployedCompany = null;
+        let lastJobApplyDay = -999;
+
+        const targetAsset = 100000000000000;
+        const MAX_LOAN = 10000000;
+        const MAX_COLLATERAL = 100000000;
+        let currentSlot = null; 
+        let playerName = "";
+        let playerGender = "male";
+        let walkInterval = null;
+        let gameTimer = null;
+        let timeLeft = 60;
+        let currentDay = 1;
+        let turnsUntilInterest = 7;
+
+        let activeBuffDays = 0; // 투자 행운 버프 남은 일수
+
+        let kStocks = [
+            { id: 0, name: "삼성전자", price: 72000, owned: 0, avgPrice: 0, delisted: false, history: [72000] },
+            { id: 1, name: "SK하이닉스", price: 175000, owned: 0, avgPrice: 0, delisted: false, history: [175000] },
+            { id: 2, name: "현대자동차", price: 240000, owned: 0, avgPrice: 0, delisted: false, history: [240000] },
+            { id: 3, name: "LG에너지솔루션", price: 380000, owned: 0, avgPrice: 0, delisted: false, history: [380000] },
+            { id: 4, name: "셀트리온", price: 185000, owned: 0, avgPrice: 0, delisted: false, history: [185000] }
+        ];
+
+        let uStocks = [
+            { id: 0, name: "Apple (AAPL)", price: 230000, owned: 0, avgPrice: 0, delisted: false, history: [230000] },
+            { id: 1, name: "NVIDIA (NVDA)", price: 140000, owned: 0, avgPrice: 0, delisted: false, history: [140000] },
+            { id: 2, name: "Tesla (TSLA)", price: 310000, owned: 0, avgPrice: 0, delisted: false, history: [310000] },
+            { id: 3, name: "Microsoft (MSFT)", price: 560000, owned: 0, avgPrice: 0, delisted: false, history: [560000] },
+            { id: 4, name: "Amazon (AMZN)", price: 270000, owned: 0, avgPrice: 0, delisted: false, history: [270000] },
+            { id: 5, name: "Google (GOOGL)", price: 210000, owned: 0, avgPrice: 0, delisted: false, history: [210000] },
+            { id: 6, name: "Meta (META)", price: 480000, owned: 0, avgPrice: 0, delisted: false, history: [480000] },
+            { id: 7, name: "Netflix (NFLX)", price: 920000, owned: 0, avgPrice: 0, delisted: false, history: [920000] },
+            { id: 8, name: "AMD (AMD)", price: 190000, owned: 0, avgPrice: 0, delisted: false, history: [190000] },
+            { id: 9, name: "Intel (INTC)", price: 35000, owned: 0, avgPrice: 0, delisted: false, history: [35000] },
+            { id: 10, name: "Palantir (PLTR)", price: 55000, owned: 0, avgPrice: 0, delisted: false, history: [55000] }
+        ];
+
+        let cryptos = [
+            { id: 0, name: "비트코인 (BTC)", price: 120000000, owned: 0, avgPrice: 0, delisted: false, history: [120000000] },
+            { id: 1, name: "이더리움 (ETH)", price: 4500000, owned: 0, avgPrice: 0, delisted: false, history: [4500000] },
+            { id: 2, name: "솔라나 (SOL)", price: 280000, owned: 0, avgPrice: 0, delisted: false, history: [280000] },
+            { id: 3, name: "리플 (XRP)", price: 1400, owned: 0, avgPrice: 0, delisted: false, history: [1400] },
+            { id: 4, name: "도지코인 (DOGE)", price: 350, owned: 0, avgPrice: 0, delisted: false, history: [350] },
+            { id: 5, name: "카르다노 (ADA)", price: 900, owned: 0, avgPrice: 0, delisted: false, history: [900] },
+            { id: 6, name: "아발란체 (AVAX)", price: 45000, owned: 0, avgPrice: 0, delisted: false, history: [45000] },
+            { id: 7, name: "체인링크 (LINK)", price: 22000, owned: 0, avgPrice: 0, delisted: false, history: [22000] },
+            { id: 8, name: "폴카닷 (DOT)", price: 9500, owned: 0, avgPrice: 0, delisted: false, history: [9500] },
+            { id: 9, name: "수이 (SUI)", price: 3200, owned: 0, avgPrice: 0, delisted: false, history: [3200] },
+            { id: 10, name: "시바이누 (SHIB)", price: 0.03, owned: 0, avgPrice: 0, delisted: false, history: [0.03] }
+        ];
+
+        // 30종의 가구 풀 정의
+        const masterShopItems = [
+            { id: 0, name: "편안한 침대", effect: "휴식 체력 회복량 +5 증가", price: 1000000, type: "bed" },
+            { id: 1, name: "고성능 PC", effect: "주식 호재 확률 증가", price: 5000000, type: "pc" },
+            { id: 2, name: "인체공학 의자", effect: "플레이어 최대 체력 +5 증가", price: 3000000, type: "chair" },
+            { id: 3, name: "고급 가죽 소파", effect: "휴식 체력 회복량 +3 증가", price: 2000000, type: "furniture" },
+            { id: 4, name: "디자이너 책상", effect: "스펙 성장 속도 보조", price: 4000000, type: "furniture" },
+            { id: 5, name: "대형 스크린 TV", effect: "심리적 안정 (최대 체력 +2)", price: 3500000, type: "furniture" },
+            { id: 6, name: "프리미엄 오디오 시스템", effect: "삶의 질 향상", price: 2500000, type: "furniture" },
+            { id: 7, name: "실내 공기청정기", effect: "건강 유지 (최대 체력 +2)", price: 1500000, type: "furniture" },
+            { id: 8, name: "스마트 커피 머신", effect: "피로 완화", price: 800000, type: "furniture" },
+            { id: 9, name: "고급 샹들리에", effect: "방 분위기 럭셔리", price: 6000000, type: "furniture" },
+            { id: 10, name: "명품 페인팅 액자", effect: "예술적 감각 상승", price: 7000000, type: "furniture" },
+            { id: 11, name: "원목 책꽂이", effect: "지적 소양 상승", price: 1200000, type: "furniture" },
+            { id: 12, name: "스마트 냉장고", effect: "신선한 간식 보관", price: 4500000, type: "furniture" },
+            { id: 13, name: "안마의자", effect: "휴식 시 추가 체력 회복 +4", price: 8000000, type: "furniture" },
+            { id: 14, name: "러닝머신", effect: "홈트레이닝 가능 (최대 체력 +3)", price: 5500000, type: "furniture" },
+            { id: 15, name: "고급 카페펫", effect: "아늑한 방 분위기", price: 900000, type: "furniture" },
+            { id: 16, name: "커스텀 게이밍 데스크", effect: "PC 효율 극대화", price: 6500000, type: "pc" },
+            { id: 17, name: "전신 거울", effect: "자기관리 향상", price: 500000, type: "furniture" },
+            { id: 18, name: "스마트 커튼", effect: "완벽한 수면 환경", price: 1800000, type: "furniture" },
+            { id: 19, name: "수족관", effect: "심신 안정", price: 3200000, type: "furniture" },
+            { id: 20, name: "와인 셀러", effect: "고급 취미", price: 7500000, type: "furniture" },
+            { id: 21, name: "AI 홈 허브", effect: "가전 제어 자동화", price: 4200000, type: "furniture" },
+            { id: 22, name: "스타일러 의류 관리기", effect: "직장인 신용도 상승", price: 3800000, type: "furniture" },
+            { id: 23, name: "고급 원목 식탁", effect: "여유로운 식사", price: 2200000, type: "furniture" },
+            { id: 24, name: "무중력 릴렉스 체어", effect: "휴식 효율 극대화", price: 4800000, type: "furniture" },
+            { id: 25, name: "무드등 스탠드", effect: "아늑한 조명", price: 400000, type: "furniture" },
+            { id: 26, name: "명품 카펫", effect: "바닥 온기 유지", price: 1600000, type: "furniture" },
+            { id: 27, name: "스마트 홈시어터", effect: "여가 생활 만족도 상승", price: 9500000, type: "furniture" },
+            { id: 28, name: "실내 미니 정원", effect: "산소 공급 및 힐링", price: 2900000, type: "furniture" },
+            { id: 29, name: "골드바 장식장", effect: "부의 상징 (자산 가치 연동)", price: 15000000, type: "furniture" }
+        ];
+
+        let currentShopPool = []; // 오늘 상점에 진열된 3개 가구
+
+        // 비밀 상점 아이템 풀 (3일마다 재입고)
+        const secretItemPool = [
+            { id: 'bull', name: "강제 호재 발생기", desc: "즉시 주식/코인 전체에 강력한 호재를 발생시킵니다.", price: 50000000 },
+            { id: 'bear', name: "강제 악재 발생기", desc: "즉시 모든 시장에 폭락 악재를 발생시켜 저가 매수 기회를 만듭니다.", price: 30000000 },
+            { id: 'health_potion', name: "만능 피로 회복제", desc: "사용 시 즉시 최대 체력만큼 체력을 완전히 회복합니다.", price: 5000000 },
+            { id: 'luck_charm', name: "행운의 부적", desc: "3일 동안 주식 상승 확률을 크게 높여주는 버프를 얻습니다.", price: 20000000 },
+            { id: 'gold_coupon', name: "비자금 쿠폰", desc: "사용 시 즉시 현금 1억 원을 획득합니다.", price: 75000000 }
+        ];
+
+        let currentSecretShopPool = []; // 현재 비밀 상점에 진열된 3개 아이템
+        let secretShopRestockDay = 1;
+
+        // 플레이어 인벤토리 (비밀 상점에서 산 아이템 보유 현황)
+        let inventory = {
+            'bull': 0,
+            'bear': 0,
+            'health_potion': 0,
+            'luck_charm': 0,
+            'gold_coupon': 0
+        };
+
+        let companies = [
+            { id: 0, name: "소기업", rateText: "현재 현금잔고의 10%", baseChance: 45, rewardRate: 0.10 },
+            { id: 1, name: "중소기업", rateText: "현재 현금잔고의 20%", baseChance: 30, rewardRate: 0.20 },
+            { id: 2, name: "중기업", rateText: "현재 현금잔고의 40%", baseChance: 15, rewardRate: 0.40 },
+            { id: 3, name: "대중기업", rateText: "현재 현금잔고의 60%", baseChance: 5, rewardRate: 0.60 },
+            { id: 4, name: "대기업", rateText: "현재 현금잔고의 90%", baseChance: 1, rewardRate: 0.90 }
+        ];
+
+        let activeChartTarget = { type: 'kstock', id: 0 };
+        let assetChartInstance = null;
+
+        function initChart() {
+            const ctx = document.getElementById('assetChart').getContext('2d');
+            assetChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Day 1'],
+                    datasets: [{
+                        label: '가격 변동',
+                        data: [72000],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#333' } },
+                        y: {
+                            ticks: { 
+                                color: '#888', 
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    if (value >= 100000000) return (value / 100000000).toFixed(1) + '억';
+                                    if (value >= 10000) return (value / 10000).toFixed(0) + '만';
+                                    return value;
+                                }
+                            },
+                            grid: { color: '#333' }
+                        }
+                    }
+                }
+            });
+            updateChartData();
+        }
+
+        function selectAssetForChart(typeName, id) {
+            activeChartTarget = { type: typeName, id: id };
+            updateChartData();
+            render();
+        }
+
+        function updateChartData() {
+            if (!assetChartInstance) return;
+            let targetList;
+            if (activeChartTarget.type === 'kstock') targetList = kStocks;
+            else if (activeChartTarget.type === 'ustock') targetList = uStocks;
+            else targetList = cryptos;
+
+            let item = targetList[activeChartTarget.id];
+            if (!item) return;
+
+            document.getElementById('selected-chart-name').innerText = item.name;
+            document.getElementById('selected-chart-price').innerText = item.price.toLocaleString();
+
+            assetChartInstance.data.labels = item.history.map((_, idx) => `Day ${idx + 1}`);
+            assetChartInstance.data.datasets[0].data = item.history;
+            assetChartInstance.data.datasets[0].label = item.name;
+            assetChartInstance.update('none');
+        }
+
+        function addLog(text, type = 'normal') {
+            const logContent = document.getElementById('log-content');
+            if (!logContent) return;
+            const item = document.createElement('div');
+            item.className = `log-item ${type}`;
+            item.innerText = `[Day ${currentDay}] ${text}`;
+            
+            if (logContent.children.length >= 100) {
+                logContent.removeChild(logContent.lastChild);
+            }
+            logContent.insertBefore(item, logContent.firstChild);
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            if (screenId !== 'game-screen') {
+                if (walkInterval) clearInterval(walkInterval);
+                if (gameTimer) clearInterval(gameTimer);
+            }
+        }
+
+        function openFileSelect() {
+            updateFileSlotsUI();
+            switchScreen('file-screen');
+        }
+
+        function goToLobby() { switchScreen('lobby-screen'); }
+        function openSettings() { switchScreen('settings-screen'); }
+        function closeSettings() { switchScreen('lobby-screen'); }
+
+        function updateFileSlotsUI() {
+            for (let i = 1; i <= 3; i++) {
+                const data = localStorage.getItem(`stock_game_100tr_slot_${i}`);
+                const infoElem = document.getElementById(`info-${i}`);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    let kVal = parsed.kStocks.reduce((sum, s) => sum + (s.delisted ? 0 : s.price * s.owned), 0);
+                    let uVal = parsed.uStocks.reduce((sum, s) => sum + (s.delisted ? 0 : s.price * s.owned), 0);
+                    let cVal = parsed.cryptos.reduce((sum, c) => sum + (c.delisted ? 0 : c.price * c.owned), 0);
+                    let total = parsed.cash + (parsed.bankBalance || 0) - (parsed.loanBalance || 0) - (parsed.collateralLoanBalance || 0) + kVal + uVal + cVal;
+                    infoElem.innerHTML = `<strong>파일 슬롯 ${i}</strong>[${parsed.name}] 자산: ${total.toLocaleString()}원`;
+                } else {
+                    infoElem.innerHTML = `<strong>파일 슬롯 ${i}</strong>데이터 없음 (새 게임)`;
+                }
+            }
+        }
+
+        function selectSlot(slotNum) {
+            currentSlot = slotNum;
+            const data = localStorage.getItem(`stock_game_100tr_slot_${slotNum}`);
+            if (data) {
+                const parsed = JSON.parse(data);
+                cash = parsed.cash;
+                bankBalance = parsed.bankBalance || 0;
+                loanBalance = parsed.loanBalance || 0;
+                collateralLoanBalance = parsed.collateralLoanBalance || 0;
+                collateralLockDays = parsed.collateralLockDays || 0;
+                maxHp = parsed.maxHp || 10;
+                hp = parsed.hp !== undefined ? parsed.hp : maxHp;
+                isFainting = parsed.isFainting || false;
+                faintingDaysLeft = parsed.faintingDaysLeft || 0;
+                specCount = parsed.specCount || 0;
+                specTurnCounter = parsed.specTurnCounter || 0;
+                currentEmployedCompany = parsed.currentEmployedCompany !== undefined ? parsed.currentEmployedCompany : null;
+                lastJobApplyDay = parsed.lastJobApplyDay !== undefined ? parsed.lastJobApplyDay : -999;
+                kStocks = parsed.kStocks || kStocks;
+                uStocks = parsed.uStocks || uStocks;
+                cryptos = parsed.cryptos || cryptos;
+                masterShopItems.forEach(master => {
+                    let found = (parsed.masterShopItems || []).find(m => m.id === master.id);
+                    if (found) master.owned = found.owned;
+                });
+                currentShopPool = parsed.currentShopPool || getRandomShopItems();
+                currentSecretShopPool = parsed.currentSecretShopPool || getRandomSecretItems();
+                secretShopRestockDay = parsed.secretShopRestockDay || 1;
+                inventory = parsed.inventory || inventory;
+                activeBuffDays = parsed.activeBuffDays || 0;
+                playerName = parsed.name || "투자왕";
+                playerGender = parsed.gender || "male";
+                currentDay = parsed.currentDay || 1;
+                turnsUntilInterest = parsed.turnsUntilInterest || 7;
+                
+                startMainGame();
+            } else {
+                document.getElementById('temp-name-input').value = "";
+                switchScreen('name-screen');
+            }
+        }
+
+        function deleteFile(slotNum) {
+            if (confirm(`정말 파일 슬롯 ${slotNum}의 진행 상황을 삭제하시겠습니까?`)) {
+                localStorage.removeItem(`stock_game_100tr_slot_${slotNum}`);
+                updateFileSlotsUI();
+            }
+        }
+
+        function proceedToGender() {
+            const nameInput = document.getElementById('temp-name-input').value.trim();
+            if (!nameInput) { alert("이름을 입력해주세요!"); return; }
+            playerName = nameInput;
+            playerGender = "male";
+            document.getElementById('btn-male').classList.add('selected');
+            document.getElementById('btn-female').classList.remove('selected');
+            switchScreen('gender-screen');
+        }
+
+        function selectGender(gender) {
+            playerGender = gender;
+            if (gender === 'male') {
+                document.getElementById('btn-male').classList.add('selected');
+                document.getElementById('btn-female').classList.remove('selected');
+            } else {
+                document.getElementById('btn-female').classList.add('selected');
+                document.getElementById('btn-male').classList.remove('selected');
+            }
+        }
+
+        function completeProfileSetup() {
+            cash = 0; bankBalance = 0; loanBalance = 0; collateralLoanBalance = 0; collateralLockDays = 0;
+            maxHp = 10; hp = 10; isFainting = false; faintingDaysLeft = 0;
+            specCount = 0; specTurnCounter = 0; currentEmployedCompany = null; lastJobApplyDay = -999;
+            currentDay = 1; turnsUntilInterest = 7;
+            activeBuffDays = 0;
+            masterShopItems.forEach(i => i.owned = false);
+            currentShopPool = getRandomShopItems();
+            currentSecretShopPool = getRandomSecretItems();
+            secretShopRestockDay = 1;
+            Object.keys(inventory).forEach(k => inventory[k] = 0);
+            
+            saveFile(currentSlot);
+            startMainGame();
+        }
+
+        function getRandomShopItems() {
+            let unowned = masterShopItems.filter(i => !i.owned);
+            let pool = [...unowned];
+            // 만약 남은 가구가 3개 미만이면 전체에서 랜덤 추출
+            if (pool.length < 3) pool = [...masterShopItems];
+            
+            // 3개 무작위 선택
+            let shuffled = pool.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, 3);
+        }
+
+        function getRandomSecretItems() {
+            let shuffled = [...secretItemPool].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, 3);
+        }
+
+        function startMainGame() {
+            switchScreen('game-screen');
+            let genderEmoji = (playerGender === 'female') ? '👧' : '🧑';
+            document.getElementById('user-info-display').innerText = `플레이어: ${playerName} (${playerGender === 'female' ? '여성' : '남성'})님의 방`;
+            document.getElementById('character').innerText = genderEmoji;
+            
+            switchTab('bank');
+            render();
+            startCharacterWalking();
+            startTimer();
+            
+            setTimeout(() => { initChart(); }, 50);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active-panel'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+            document.getElementById(`panel-${tabName}`).classList.add('active-panel');
+            event.target.classList.add('active-tab');
+        }
+
+        function switchLaborTab(sub) {
+            if (sub === 'parttime') {
+                document.getElementById('btn-sub-parttime').classList.add('active');
+                document.getElementById('btn-sub-career').classList.remove('active');
+                document.getElementById('labor-parttime-section').style.display = 'block';
+                document.getElementById('labor-career-section').style.display = 'none';
+            } else {
+                document.getElementById('btn-sub-career').classList.add('active');
+                document.getElementById('btn-sub-parttime').classList.remove('active');
+                document.getElementById('labor-career-section').style.display = 'block';
+                document.getElementById('labor-parttime-section').style.display = 'none';
+            }
+        }
+
+        function startCharacterWalking() {
+            const charElem = document.getElementById('character-box');
+            let position = 10;
+            let direction = 1; 
+            if (walkInterval) cancelAnimationFrame(walkInterval);
+            
+            let lastTime = 0;
+            const speed = 1.2;
+            function animateWalk(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                let delta = timestamp - lastTime;
+                if (delta > 30) {
+                    position += direction * speed * (delta / 16);
+                    if (position > 730) { direction = -1; position = 730; } 
+                    else if (position < 10) { direction = 1; position = 10; }
+                    charElem.style.transform = `translateX(${position - 10}px)`;
+                    lastTime = timestamp;
+                }
+                walkInterval = requestAnimationFrame(animateWalk);
+            }
+            walkInterval = requestAnimationFrame(animateWalk);
+        }
+
+        function startTimer() {
+            if (gameTimer) clearInterval(gameTimer);
+            timeLeft = 60;
+            updateTimerDisplay();
+
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 0) {
+                    triggerNewDay();
+                    timeLeft = 60;
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const timerBar = document.getElementById('timer-bar');
+            if (timerBar) {
+                if (isFainting) {
+                    timerBar.innerText = `🚨 몸져누워 기절 중... (남은 일수: ${faintingDaysLeft}일)`;
+                } else {
+                    timerBar.innerText = `⏳ 남은 시간: ${timeLeft}초 (Day ${currentDay}) | 주이자 적용까지 남은 턴: ${turnsUntilInterest}회`;
+                }
+            }
+        }
+
+        function triggerNewDay() {
+            if (isFainting) {
+                faintingDaysLeft--;
+                if (faintingDaysLeft <= 0) {
+                    isFainting = false;
+                    hp = 2;
+                    addLog("기절에서 깨어났습니다! 체력이 2로 회복되어 다시 활동을 시작합니다.", "good");
+                } else {
+                    addLog(`몸져누워 있는 중입니다. (남은 기절 일수: ${faintingDaysLeft}일)`, "bad");
+                }
+                render();
+                return;
+            }
+
+            currentDay++;
+            turnsUntilInterest--;
+
+            if (activeBuffDays > 0) {
+                activeBuffDays--;
+                if (activeBuffDays === 0) {
+                    addLog("행운의 부적 버프 효과가 종료되었습니다.");
+                }
+            }
+
+            // 가구 상점 매일 재입고
+            currentShopPool = getRandomShopItems();
+            addLog("🛒 가구 상점의 품목이 새롭게 재입고되었습니다!");
+
+            // 비밀 상점 3일 주기 재입고 체크
+            if (currentDay - secretShopRestockDay >= 3) {
+                currentSecretShopPool = getRandomSecretItems();
+                secretShopRestockDay = currentDay;
+                addLog("🕵️ 비밀 상점의 품목이 새롭게 갱신되었습니다!", "news");
+            }
+
+            if (currentEmployedCompany !== null) {
+                let comp = companies[currentEmployedCompany];
+                let salary = Math.floor(cash * comp.rewardRate);
+                cash += salary;
+                addLog(`[취직 급여 지급] ${comp.name}에서 급여 ${salary.toLocaleString()}원이 입금되었습니다!`, "good");
+
+                specTurnCounter++;
+                if (specTurnCounter >= 2) {
+                    specCount++;
+                    specTurnCounter = 0;
+                    addLog(`[스펙 상승] 회사 재직 경험으로 '스펙' 중첩이 1 증가했습니다! (현재 중첩: ${specCount})`, "good");
+                }
+            }
+
+            if (collateralLockDays > 0) {
+                collateralLockDays--;
+                if (collateralLockDays === 0) {
+                    addLog("담보대출 전액 상환 후 14일의 제한 기간이 만료되어 일반 은행 기능이 정상화되었습니다.", "good");
+                }
+            }
+
+            generateNews();
+            updateMarketPrices();
+
+            if (turnsUntilInterest <= 0) {
+                applyInterests();
+                turnsUntilInterest = 7;
+            }
+
+            render();
+            updateChartData();
+            if (currentSlot) saveFile(currentSlot);
+        }
+
+        function generateNews() {
+            let pcOwned = masterShopItems.find(i => i.type === 'pc' && i.owned);
+            let goodChance = pcOwned ? 0.6 : 0.4;
+            if (activeBuffDays > 0) goodChance += 0.3;
+
+            const newsPool = [
+                { text: "글로벌 기술주 대호재 및 수출 급증!", type: "good", isGood: true },
+                { text: "미 연방준비제도 금리 인하 검토로 증시 환호", type: "good", isGood: true },
+                { text: "가상화폐 거래소 해킹 보안 사고 발생! 코인 시장 폭락 우려", type: "bad", isGood: false },
+                { text: "환율 급등 및 글로벌 인플레이션 우려로 증시 침체", type: "bad", isGood: false },
+                { text: "전기차 수요 부진 소식에 관련주 하락세", type: "bad", isGood: false },
+                { text: "신재생 에너지 및 인공지능(AI) 테마 대세론 확산", type: "good", isGood: true }
+            ];
+            const selected = newsPool[Math.floor(Math.random() * newsPool.length)];
+            addLog(`[뉴스] ${selected.text}`, selected.type === 'bad' ? 'bad' : 'news');
+        }
+
+        function triggerForcedNews(isBull) {
+            if (isBull) {
+                [kStocks, uStocks, cryptos].forEach(market => {
+                    market.forEach(stock => {
+                        if (stock.delisted) return;
+                        let changeRate = 0.15 + Math.random() * 0.2; // 15~35% 급등
+                        stock.price = Math.floor(stock.price * (1 + changeRate));
+                        if (!stock.history) stock.history = [];
+                        stock.history.push(stock.price);
+                    });
+                });
+                addLog("[비밀아이템 발동] 강제 호재 발생기 사용! 전 세계 증시와 코인 시장이 대폭등합니다!", "news");
+            } else {
+                [kStocks, uStocks, cryptos].forEach(market => {
+                    market.forEach(stock => {
+                        if (stock.delisted) return;
+                        let changeRate = -(0.15 + Math.random() * 0.2); // 15~35% 폭락
+                        stock.price = Math.floor(stock.price * (1 + changeRate));
+                        if (!stock.history) stock.history = [];
+                        stock.history.push(stock.price);
+                    });
+                });
+                addLog("[비밀아이템 발동] 강제 악재 발생기 사용! 전 세계 시장이 폭락하여 대공황이 찾아왔습니다.", "bad");
+            }
+            updateChartData();
+            render();
+        }
+
+        function updateMarketPrices() {
+            let pcOwned = masterShopItems.find(i => i.type === 'pc' && i.owned);
+            let bonusGood = pcOwned ? 0.08 : 0;
+            if (activeBuffDays > 0) bonusGood += 0.25;
+
+            [kStocks, uStocks, cryptos].forEach(market => {
+                market.forEach(stock => {
+                    if (stock.delisted) return;
+                    let rand = Math.random();
+                    let changeRate = (Math.random() * 0.4) - 0.18;
+                    if (rand < (0.35 + bonusGood)) {
+                        changeRate = Math.abs(changeRate) * 0.8 + 0.05;
+                    }
+                    stock.price = Math.floor(stock.price * (1 + changeRate));
+                    if (!stock.history) stock.history = [];
+                    stock.history.push(stock.price);
+
+                    if (stock.price < 50) {
+                        stock.delisted = true;
+                        stock.owned = 0;
+                        stock.avgPrice = 0;
+                        addLog(`[상장폐지] ${stock.name}이(가) 폭락을 견디지 못하고 상장폐지되었습니다!`, "bad");
+                    }
+                });
+            });
+        }
+
+        function applyInterests() {
+            if (bankBalance > 0) {
+                bankBalance = Math.floor(bankBalance * 1.1);
+                addLog("예치금에 10% 주이자가 가산되었습니다.", "good");
+            }
+            if (loanBalance > 0) {
+                loanBalance = Math.floor(loanBalance * 1.1);
+                addLog("일반 대출에 10% 주이자가 가산되었습니다.", "bad");
+            }
+            if (collateralLoanBalance > 0) {
+                collateralLoanBalance = Math.floor(collateralLoanBalance * 1.2);
+                addLog("담보 대출에 20% 주이자가 가산되었습니다.", "bad");
+            }
+        }
+
+        function checkFaintingState() {
+            if (isFainting) {
+                alert("현재 몸져누워 기절한 상태입니다! 아무런 행동도 할 수 없습니다.");
+                return true;
+            }
+            return false;
+        }
+
+        function consumeHp(amount) {
+            hp -= amount;
+            if (hp <= 0) {
+                hp = 0;
+                isFainting = true;
+                faintingDaysLeft = 2;
+                addLog("체력이 바닥나서 기절했습니다! 이틀 동안 몸져눕게 됩니다.", "bad");
+            }
+        }
+
+        function RestInBed() {
+            if (checkFaintingState()) return;
+            let bedOwned = masterShopItems.find(i => i.type === 'bed' && i.owned);
+            let recovery = 5 + (bedOwned ? 5 : 0);
+            hp = Math.min(maxHp, hp + recovery);
+            currentDay++;
+            addLog(`침대에서 편안하게 휴식을 취하여 체력이 ${recovery} 회복되고 하루가 지나갔습니다.`, "good");
+            render();
+        }
+
+        function saveFile(slotNum) {
+            const saveData = {
+                name: playerName, gender: playerGender, cash, bankBalance, loanBalance,
+                collateralLoanBalance, collateralLockDays, maxHp, hp, isFainting, faintingDaysLeft,
+                specCount, specTurnCounter, currentEmployedCompany, lastJobApplyDay, kStocks, uStocks, cryptos,
+                masterShopItems: masterShopItems.map(m => ({ id: m.id, owned: m.owned })),
+                currentShopPool, currentSecretShopPool, secretShopRestockDay, inventory, activeBuffDays, currentDay, turnsUntilInterest
+            };
+            localStorage.setItem(`stock_game_100tr_slot_${slotNum}`, JSON.stringify(saveData));
+            updateFileSlotsUI();
+        }
+
+        function changeBrightness(val) {
+            document.getElementById('brightness-val').innerText = val;
+            document.getElementById('main-body').style.filter = `brightness(${val}%)`;
+        }
+
+        function changeBackgroundColor(color) {
+            document.documentElement.style.setProperty('--bg-color', color);
+        }
+
+        function checkBankLocked() {
+            if (collateralLockDays > 0) {
+                alert(`담보대출 전액 상환 후 14일간의 제한으로 인해 앞으로 ${collateralLockDays}일 동안 일반 은행 기능을 이용할 수 없습니다!`);
+                return true;
+            }
+            return false;
+        }
+
+        function depositBank() {
+            if (checkFaintingState() || checkBankLocked()) return;
+            let amt = parseInt(document.getElementById('bank-amount').value);
+            if (isNaN(amt) || amt <= 0) { alert("올바른 금액을 입력하세요."); return; }
+            if (cash >= amt) {
+                cash -= amt; bankBalance += amt;
+                addLog(`은행에 ${amt.toLocaleString()}원을 예치했습니다.`);
+                render();
+            } else { alert("현금이 부족합니다!"); }
+        }
+
+        function withdrawBank() {
+            if (checkFaintingState() || checkBankLocked()) return;
+            let amt = parseInt(document.getElementById('bank-amount').value);
+            if (isNaN(amt) || amt <= 0) { alert("올바른 금액을 입력하세요."); return; }
+            if (bankBalance >= amt) {
+                bankBalance -= amt; cash += amt;
+                addLog(`은행에서 ${amt.toLocaleString()}원을 출금했습니다.`);
+                render();
+            } else { alert("예치금이 부족합니다!"); }
+        }
+
+        function takeLoan() {
+            if (checkFaintingState() || checkBankLocked()) return;
+            let amt = parseInt(document.getElementById('loan-amount').value);
+            if (isNaN(amt) || amt <= 0) { alert("올바른 금액을 입력하세요."); return; }
+            if (loanBalance + amt > MAX_LOAN) {
+                alert(`일반 대출 한도(${MAX_LOAN.toLocaleString()}원)를 초과할 수 없습니다!`);
+                return;
+            }
+            loanBalance += amt; cash += amt;
+            addLog(`일반 대출 ${amt.toLocaleString()}원을 실행했습니다.`);
+            render();
+        }
+
+        function repayLoan() {
+            if (checkFaintingState() || checkBankLocked()) return;
+            let amt = parseInt(document.getElementById('loan-amount').value);
+            if (isNaN(amt) || amt <= 0) { alert("올바른 금액을 입력하세요."); return; }
+            if (cash >= amt && loanBalance >= amt) {
+                cash -= amt; loanBalance -= amt;
+                addLog(`일반 대출 ${amt.toLocaleString()}원을 상환했습니다.`);
+            } else { alert("현금이 부족하거나 상환 금액이 초과되었습니다!"); }
+            render();
+        }
+
+        function takeCollateralLoan() {
+            if (checkFaintingState()) return;
+            let amtInput = prompt(`담보 대출받을 금액을 입력하세요 (주이자 20%, 최대 한도 1억 원):\n현재 담보대출 잔액: ${collateralLoanBalance.toLocaleString()}원`, "10000000");
+            if (!amtInput) return;
+            let amt = parseInt(amtInput);
+            if (isNaN(amt) || amt <= 0) { alert("올바른 금액을 입력하세요."); return; }
+            if (collateralLoanBalance + amt > MAX_COLLATERAL) {
+                alert(`담보 대출 한도(${MAX_COLLATERAL.toLocaleString()}원)를 초과할 수 없습니다!`);
+                return;
+            }
+            collateralLoanBalance += amt; cash += amt;
+            addLog(`담보 대출 ${amt.toLocaleString()}원을 실행했습니다.`, "bad");
+            render();
+        }
+
+        function doPartTimeJob(jobName, pay, hpCost) {
+            if (checkFaintingState()) return;
+            if (hp < hpCost) {
+                alert("체력이 부족하여 알바를 할 수 없습니다! 휴식을 취하거나 체력을 회복하세요.");
+                return;
+            }
+            cash += pay;
+            consumeHp(hpCost);
+            addLog(`${jobName} 완료! 수당 ${pay.toLocaleString()}원을 획득하고 체력 ${hpCost}이(가) 소모되었습니다.`, "good");
+            render();
+        }
+
+        function applyForJob(compIndex) {
+            if (checkFaintingState()) return;
+            
+            let daysSinceLastApply = currentDay - lastJobApplyDay;
+            if (daysSinceLastApply < 3) {
+                alert(`회사 지원은 3일에 1번만 가능합니다! (앞으로 ${3 - daysSinceLastApply}일 뒤에 지원 가능)`);
+                return;
+            }
+
+            lastJobApplyDay = currentDay;
+            let comp = companies[compIndex];
+            let specBonus = specCount * 0.25;
+            let totalChance = comp.baseChance + specBonus;
+            
+            let roll = Math.random() * 100;
+            if (roll <= totalChance) {
+                currentEmployedCompany = compIndex;
+                specTurnCounter = 0;
+                addLog(`[취직 성공] ${comp.name}에 성공적으로 취직했습니다! (성공 확률: ${totalChance.toFixed(2)}%)`, "good");
+            } else {
+                addLog(`[취직 실패] ${comp.name} 지원에 낙방했습니다. (성공 확률: ${totalChance.toFixed(2)}%)`, "bad");
+            }
+            render();
+        }
+
+        function trainGym() {
+            if (checkFaintingState()) return;
+            let gymCost = 200000;
+            let hpCost = 3;
+            if (cash < gymCost) { alert("현금이 부족합니다!"); return; }
+            if (hp < hpCost) { alert("체력이 부족하여 운동을 할 수 없습니다!"); return; }
+            
+            cash -= gymCost;
+            consumeHp(hpCost); // 버그 수정: 체력 닳지 않던 문제 해결 완료
+            maxHp += 2;
+            hp = Math.min(maxHp, hp + 3);
+            addLog("헬스장 운동 완료! 최대 체력이 2 증가했습니다.", "good");
+            render();
+        }
+
+        function buyShopItem(itemId) {
+            if (checkFaintingState()) return;
+            let item = masterShopItems.find(i => i.id === itemId);
+            if (!item || item.owned) { alert("이미 구매했거나 존재하지 않는 가구입니다."); return; }
+            
+            if (cash >= item.price) {
+                cash -= item.price;
+                item.owned = true;
+                if (item.type === 'chair') {
+                    maxHp += 5;
+                    hp += 5;
+                }
+                addLog(`${item.name}을(를) 구매하여 방에 설치했습니다! (${item.effect})`, "good");
+                render();
+            } else { alert("현금이 부족합니다!"); }
+        }
+
+        function buySecretItem(secretId) {
+            if (checkFaintingState()) return;
+            let sItem = currentSecretShopPool.find(s => s.id === secretId);
+            if (!sItem) return;
+
+            if (cash >= sItem.price) {
+                cash -= sItem.price;
+                inventory[secretId] = (inventory[secretId] || 0) + 1;
+                addLog(`🕵️ 비밀 상점에서 [${sItem.name}]을(를) 구매하여 인벤토리에 보관했습니다!`, "news");
+                render();
+            } else { alert("현금이 부족합니다!"); }
+        }
+
+        function useInventoryItem(secretId) {
+            if (checkFaintingState()) return;
+            if ((inventory[secretId] || 0) <= 0) { alert("보유한 아이템이 없습니다."); return; }
+
+            inventory[secretId]--;
+
+            if (secretId === 'bull') {
+                triggerForcedNews(true);
+            } else if (secretId === 'bear') {
+                triggerForcedNews(false);
+            } else if (secretId === 'health_potion') {
+                hp = maxHp;
+                addLog("만능 피로 회복제를 사용하여 체력이 완전히 회복되었습니다!", "good");
+            } else if (secretId === 'luck_charm') {
+                activeBuffDays += 3;
+                addLog("행운의 부적을 사용했습니다! 3일 동안 주식 상승 확률이 대폭 증가합니다.", "good");
+            } else if (secretId === 'gold_coupon') {
+                cash += 100000000;
+                addLog("비자금 쿠폰을 사용하여 즉시 현금 1억 원을 획득했습니다!", "good");
+            }
+            render();
+        }
+
+        function render() {
+            let kVal = kStocks.reduce((sum, s) => sum + (s.delisted ? 0 : s.price * s.owned), 0);
+            let uVal = uStocks.reduce((sum, s) => sum + (s.delisted ? 0 : s.price * s.owned), 0);
+            let cVal = cryptos.reduce((sum, c) => sum + (c.delisted ? 0 : c.price * c.owned), 0);
+            
+            let totalDebt = loanBalance + collateralLoanBalance;
+            let totalAsset = cash + bankBalance - totalDebt + kVal + uVal + cVal;
+
+            let cashElem = document.getElementById('cash');
+            cashElem.innerText = cash.toLocaleString();
+            cashElem.className = cash >= 0 ? 'positive' : '';
+
+            let totalElem = document.getElementById('total-asset');
+            totalElem.innerText = totalAsset < 0 ? `-${Math.abs(totalAsset).toLocaleString()}` : totalAsset.toLocaleString();
+            totalElem.className = totalAsset >= 0 ? 'positive' : '';
+
+            document.getElementById('hp-status').innerText = `${hp} / ${maxHp}`;
+            document.getElementById('gym-max-hp').innerText = maxHp;
+            
+            let hpPercent = (hp / maxHp) * 100;
+            document.getElementById('hp-bar-fill').style.width = `${hpPercent}%`;
+
+            document.getElementById('bank-balance').innerText = bankBalance.toLocaleString();
+            document.getElementById('loan-balance').innerText = loanBalance.toLocaleString();
+
+            const collateralStatus = document.getElementById('collateral-status');
+            const btnCollateral = document.getElementById('btn-collateral');
+            if (collateralLockDays > 0) {
+                collateralStatus.innerText = `⚠️ 담보대출 제한 중 (상환 후 남은 제한 일수: ${collateralLockDays}일)`;
+                btnCollateral.classList.add('disabled-btn');
+            } else {
+                collateralStatus.innerText = `현재 담보대출 잔액: ${collateralLoanBalance.toLocaleString()}원 / 100,000,000원`;
+                btnCollateral.classList.remove('disabled-btn');
+            }
+
+            document.getElementById('furniture-bed').style.display = masterShopItems[0].owned ? 'block' : 'none';
+            document.getElementById('furniture-pc').style.display = masterShopItems[1].owned ? 'block' : 'none';
+            document.getElementById('furniture-chair').style.display = masterShopItems[2].owned ? 'block' : 'none';
+            document.getElementById('furniture-buff').style.display = activeBuffDays > 0 ? 'block' : 'none';
+
+            document.getElementById('spec-count').innerText = specCount;
+            document.getElementById('spec-bonus-rate').innerText = (specCount * 0.25).toFixed(2);
+            
+            let banner = document.getElementById('current-job-banner');
+            if (currentEmployedCompany !== null) {
+                banner.innerText = `현재 재직 중인 회사: ${companies[currentEmployedCompany].name} (급여 조건: ${companies[currentEmployedCompany].rateText})`;
+            } else {
+                banner.innerText = `현재 재직 중인 회사: 없음`;
+            }
+
+            let daysSinceLastApply = currentDay - lastJobApplyDay;
+            let jobNotice = document.getElementById('job-cooldown-notice');
+            if (daysSinceLastApply < 3) {
+                jobNotice.innerText = `⏳ 다음 회사 지원까지 남은 대기 기간: ${3 - daysSinceLastApply}일`;
+            } else {
+                jobNotice.innerText = `✅ 지금 바로 회사 지원이 가능합니다!`;
+            }
+
+            let secretTimerElem = document.getElementById('secret-shop-timer');
+            let daysUntilSecretRestock = 3 - (currentDay - secretShopRestockDay);
+            secretTimerElem.innerText = `🔄 비밀 상점 품목 갱신까지 남은 일수: ${daysUntilSecretRestock <= 0 ? 0 : daysUntilSecretRestock}일`;
+
+            function renderMarketTable(list, typeName, tbodyId) {
+                let tbody = document.getElementById(tbodyId);
+                let html = "";
+                list.forEach(item => {
+                    let isSelected = (activeChartTarget.type === typeName && activeChartTarget.id === item.id);
+                    let rowClass = isSelected ? 'selected-row' : '';
+
+                    if (item.delisted) {
+                        html += `<tr class="${rowClass}" onclick="selectAssetForChart('${typeName}', ${item.id})"><td><strong>${item.name}</strong> <span style="color:red;">(상장폐지)</span></td><td colspan="4">거래 불가능</td></tr>`;
+                    } else {
+                        html += `
+                            <tr class="${rowClass}" onclick="selectAssetForChart('${typeName}', ${item.id})">
+                                <td><strong>${item.name}</strong></td>
+                                <td>${item.price.toLocaleString()}원 <br><span style="font-size:0.75em; color:#666;">(평단: ${item.avgPrice.toLocaleString()}원)</span></td>
+                                <td>${item.owned}주</td>
+                                <td>
+                                    <div class="trade-group" onclick="event.stopPropagation();">
+                                        <input type="number" id="${typeName}-qty-${item.id}" value="1" min="1" class="trade-input" oninput="calcTradeCost('${typeName}', ${item.id})">
+                                        <span id="${typeName}-cost-${item.id}" style="font-size:0.75em; color:#555;">(${item.price.toLocaleString()}원)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); buyAsset('${typeName}', ${item.id});">매수</button>
+                                    <button class="sell" onclick="event.stopPropagation(); selectAssetForChart('${typeName}', ${item.id}); sellAsset('${typeName}', ${item.id});">매도</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+                tbody.innerHTML = html;
+            }
+
+            renderMarketTable(kStocks, 'kstock', 'kstock-list');
+            renderMarketTable(uStocks, 'ustock', 'ustock-list');
+            renderMarketTable(cryptos, 'crypto', 'crypto-list');
+
+            let compTbody = document.getElementById('company-list');
+            let compHtml = "";
+            companies.forEach((comp, idx) => {
+                let finalChance = comp.baseChance + (specCount * 0.25);
+                compHtml += `
+                    <tr>
+                        <td><strong>${comp.name}</strong></td>
+                        <td>${comp.rateText}</td>
+                        <td>${finalChance.toFixed(2)}% <span style="font-size:0.75em; color:#666;">(기본 ${comp.baseChance}% + 스펙 +${(specCount*0.25).toFixed(2)}%)</span></td>
+                        <td><button onclick="applyForJob(${idx})">지원하기</button></td>
+                    </tr>
+                `;
+            });
+            compTbody.innerHTML = compHtml;
+
+            // 가구 상점 렌더링 (오늘의 3개 품목)
+            let shopTbody = document.getElementById('shop-list');
+            let shopHtml = "";
+            currentShopPool.forEach(item => {
+                shopHtml += `
+                    <tr>
+                        <td><strong>${item.name}</strong></td>
+                        <td>${item.effect}</td>
+                        <td>${item.price.toLocaleString()}원</td>
+                        <td>${item.owned ? '<span style="color:green; font-weight:bold;">보유중</span>' : `<button onclick="buyShopItem(${item.id})">구매</button>`}</td>
+                    </tr>
+                `;
+            });
+            shopTbody.innerHTML = shopHtml;
+
+            // 비밀 상점 렌더링
+            let secretTbody = document.getElementById('secret-shop-list');
+            let secretHtml = "";
+            currentSecretShopPool.forEach(sItem => {
+                secretHtml += `
+                    <tr>
+                        <td><strong>${sItem.name}</strong></td>
+                        <td>${sItem.desc}</td>
+                        <td>${sItem.price.toLocaleString()}원</td>
+                        <td><button onclick="buySecretItem('${sItem.id}')" style="background-color: #8e44ad;">구매</button></td>
+                    </tr>
+                `;
+            });
+            secretTbody.innerHTML = secretHtml;
+
+            // 인벤토리 렌더링
+            let invTbody = document.getElementById('inventory-list');
+            let invHtml = "";
+            let invMap = {
+                'bull': "강제 호재 발생기",
+                'bear': "강제 악재 발생기",
+                'health_potion': "만능 피로 회복제",
+                'luck_charm': "행운의 부적",
+                'gold_coupon': "비자금 쿠폰"
+            };
+            let invDescMap = {
+                'bull': "즉시 강력한 호재 발생",
+                'bear': "즉시 강력한 악재 발생",
+                'health_potion': "체력 최대 회복",
+                'luck_charm': "3일간 투자 상승 버프",
+                'gold_coupon': "현금 1억 원 즉시 획득"
+            };
+            Object.keys(inventory).forEach(key => {
+                let count = inventory[key] || 0;
+                invHtml += `
+                    <tr>
+                        <td><strong>${invMap[key]}</strong></td>
+                        <td>${invDescMap[key]}</td>
+                        <td>${count}개</td>
+                        <td>${count > 0 ? `<button onclick="useInventoryItem('${key}')" style="background-color: #27ae60;">사용</button>` : '<span style="color:#888;">없음</span>'}</td>
+                    </tr>
+                `;
+            });
+            invTbody.innerHTML = invHtml;
+
+            if (totalAsset >= targetAsset) {
+                alert("축하합니다! 100조 원 목표를 달성하여 게임에서 승리하셨습니다!");
+            }
+        }
+
+        function calcTradeCost(typeName, id) {
+            let list = typeName === 'kstock' ? kStocks : (typeName === 'ustock' ? uStocks : cryptos);
+            let qtyInput = document.getElementById(`${typeName}-qty-${id}`);
+            if (!qtyInput) return;
+            let qty = parseInt(qtyInput.value) || 0;
+            let cost = qty * list[id].price;
+            let costSpan = document.getElementById(`${typeName}-cost-${id}`);
+            if (costSpan) costSpan.innerText = `(${cost.toLocaleString()}원)`;
+        }
+
+        // 버그 수정: 다량 매수/매도 시 id 조회 및 인풋값 올바르게 반영되도록 수정 완료
+        function buyAsset(typeName, id) {
+            if (checkFaintingState()) return;
+            let list = typeName === 'kstock' ? kStocks : (typeName === 'ustock' ? uStocks : cryptos);
+            let item = list.find(s => s.id === id);
+            if (!item || item.delisted) { alert("거래할 수 없는 종목입니다."); return; }
+
+            let qtyInput = document.getElementById(`${typeName}-qty-${id}`);
+            let qty = parseInt(qtyInput ? qtyInput.value : 1);
+            if (isNaN(qty) || qty <= 0) { alert("올바른 수량을 입력하세요."); return; }
+            let totalCost = qty * item.price;
+
+            if (cash >= totalCost) {
+                cash -= totalCost;
+                let oldTotalSpent = item.owned * item.avgPrice;
+                item.owned += qty;
+                item.avgPrice = Math.floor((oldTotalSpent + totalCost) / item.owned);
+                addLog(`${item.name} ${qty}개 매수 (평단가: ${item.avgPrice.toLocaleString()}원)`);
+                render();
+            } else { alert("현금이 부족합니다!"); }
+        }
+
+        function sellAsset(typeName, id) {
+            if (checkFaintingState()) return;
+            let list = typeName === 'kstock' ? kStocks : (typeName === 'ustock' ? uStocks : cryptos);
+            let item = list.find(s => s.id === id);
+            if (!item) return;
+
+            let qtyInput = document.getElementById(`${typeName}-qty-${id}`);
+            let qty = parseInt(qtyInput ? qtyInput.value : 1);
+            if (isNaN(qty) || qty <= 0) { alert("올바른 수량을 입력하세요."); return; }
+
+            if (item.owned >= qty) {
+                let totalRevenue = qty * item.price;
+                cash += totalRevenue;
+                item.owned -= qty;
+                if (item.owned === 0) item.avgPrice = 0;
+                addLog(`${item.name} ${qty}개 매도`);
+
+                if (collateralLoanBalance > 0 && cash >= collateralLoanBalance) {
+                    let rawRepay = collateralLoanBalance;
+                    cash -= rawRepay;
+                    collateralLoanBalance = 0;
+                    collateralLockDays = 14; 
+                    addLog(`담보대출 전액(${rawRepay.toLocaleString()}원)이 자동 상환되었습니다. 지금부터 14일간 은행 이용이 제한됩니다.`, "bad");
+                }
+
+                render();
+            } else { alert("보유 수량이 부족합니다!"); }
+        }
+    </script>
+</body>
+</html>
