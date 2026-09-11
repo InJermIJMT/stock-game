@@ -638,7 +638,7 @@
             { id: 103, name: "한정식 정식", effect: "배고픔 +5 회복", price: 35000, type: "food", hungerRestore: 5 },
             { id: 104, name: "특급 코스 요리", effect: "배고픔 완전 회복", price: 80000, type: "food", hungerRestore: 7 },
             // 복권
-            { id: 200, name: "즉석식 복권", effect: "1장 구매 (7일 후 당첨 확인)", price: 2000, type: "lottery" }
+            { id: 200, name: "즉석식 복권", effect: "여러 장 구매 가능 (주이자 적용일에 일괄 발표)", price: 2000, type: "lottery" }
         ];
 
         let currentShopPool = []; // { ...item, soldOut: false }
@@ -929,7 +929,7 @@
             const desc = document.getElementById('shop-tab-desc');
             if (tab === 'furniture') desc.innerText = '방을 꾸밀 가구를 구매하여 특수 효과를 누리세요! (각 품목 1회만 구매, 다음날 재입고)';
             else if (tab === 'food') desc.innerText = '배고픔을 회복하는 음식을 구매하세요. (각 품목 1회만 구매, 다음날 재입고)';
-            else desc.innerText = '복권을 구매하세요. 1장만 가능하며 다음날 재입고됩니다. 구매 후 7일 뒤 당첨 확인.';
+            else desc.innerText = '복권을 여러 장 구매할 수 있습니다. 당첨 발표는 주이자 적용일에 일괄 공개됩니다.';
             render();
         }
 
@@ -1086,9 +1086,6 @@
             // 비밀상점: 매일 각 아이템 0.5% 확률로 등장
             trySpawnSecretItems();
 
-            // 복권 당첨 확인 (구매 후 7일 경과)
-            checkLotteryResults();
-
             if (currentEmployedCompany !== null) {
                 let comp = companies[currentEmployedCompany];
                 let salary = Math.floor(cash * comp.rewardRate);
@@ -1199,6 +1196,8 @@
                 collateralLoanBalance = Math.floor(collateralLoanBalance * 1.2);
                 addLog("담보 대출에 20% 주이자가 가산되었습니다.", "bad");
             }
+            // 주이자 적용일과 함께 복권 일괄 발표
+            checkLotteryResults();
         }
 
         function checkFaintingState() {
@@ -1250,7 +1249,6 @@
             addLog("🛒 가구 상점의 품목이 새롭게 재입고되었습니다!");
 
             trySpawnSecretItems();
-            checkLotteryResults();
 
             if (currentEmployedCompany !== null) {
                 let comp = companies[currentEmployedCompany];
@@ -1468,7 +1466,6 @@
             if (poolItem.soldOut) { alert("이미 품절된 상품입니다. 다음날 재입고를 기다려주세요."); return; }
 
             let item = masterShopItems.find(i => i.id === itemId) || poolItem;
-            if (cash < item.price) { alert("현금이 부족합니다!"); return; }
 
             // 가구 영구 소유 체크
             if (item.type !== 'food' && item.type !== 'lottery' && item.owned) {
@@ -1476,17 +1473,34 @@
                 return;
             }
 
-            cash -= item.price;
-            poolItem.soldOut = true; // 이번 재입고 사이클에서 품절
-
             if (item.type === 'lottery') {
-                lotteryTickets.push({
-                    id: nextLotteryId++,
-                    buyDay: currentDay,
-                    checked: false
-                });
-                addLog(`복권 1장을 구매했습니다. 7일 후에 당첨 여부를 확인할 수 있습니다.`, "news");
-            } else if (item.type === 'food') {
+                // 여러 장 구매 가능 (재입고된 동안 수량 제한 없음)
+                let qtyStr = prompt(`복권을 몇 장 구매하시겠습니까? (1장 ${item.price.toLocaleString()}원)\n※ 당첨 발표는 주이자 적용일에 일괄 공개됩니다.`, "1");
+                if (!qtyStr) return;
+                let qty = parseInt(qtyStr);
+                if (isNaN(qty) || qty <= 0) { alert("올바른 수량을 입력하세요."); return; }
+                if (qty > 1000) { alert("한 번에 최대 1,000장까지 구매할 수 있습니다."); return; }
+                let total = qty * item.price;
+                if (cash < total) { alert(`현금이 부족합니다! (필요: ${total.toLocaleString()}원)`); return; }
+                cash -= total;
+                for (let i = 0; i < qty; i++) {
+                    lotteryTickets.push({
+                        id: nextLotteryId++,
+                        buyDay: currentDay,
+                        checked: false
+                    });
+                }
+                addLog(`복권 ${qty}장을 구매했습니다. (총 ${total.toLocaleString()}원) 주이자 적용일에 일괄 발표됩니다.`, "news");
+                // 복권은 여러 장 구매 가능하므로 품절 처리하지 않음
+                render();
+                return;
+            }
+
+            if (cash < item.price) { alert("현금이 부족합니다!"); return; }
+            cash -= item.price;
+            poolItem.soldOut = true; // 음식/가구는 1회 구매 후 품절
+
+            if (item.type === 'food') {
                 let key = 'food_' + item.id;
                 inventory[key] = (inventory[key] || 0) + 1;
                 addLog(`${item.name}을(를) 구매하여 인벤토리에 넣었습니다.`, "good");
@@ -1568,25 +1582,45 @@
         }
 
         function checkLotteryResults() {
-            let any = false;
-            lotteryTickets.forEach(ticket => {
-                if (ticket.checked) return;
-                if (currentDay - ticket.buyDay >= 7) {
-                    ticket.checked = true;
-                    any = true;
-                    const result = rollLottery();
-                    if (result.rank > 0) {
-                        cash += result.prize;
-                        addLog(`🎫 복권(구매일 Day ${ticket.buyDay}) ${result.name} 당첨! 상금 ${result.prize.toLocaleString()}원을 받았습니다!`, "good");
-                    } else {
-                        addLog(`🎫 복권(구매일 Day ${ticket.buyDay})은 아쉽게도 낙첨되었습니다.`, "bad");
-                    }
+            // 주이자 적용일에 보유 중인 모든 미확인 복권을 일괄 발표
+            const pending = lotteryTickets.filter(t => !t.checked);
+            if (pending.length === 0) return;
+
+            const rankCount = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 0: 0 };
+            const rankPrize = { 1: 1000000000, 2: 50000000, 3: 1000000, 4: 50000, 5: 1000, 0: 0 };
+            let totalPrize = 0;
+
+            pending.forEach(ticket => {
+                ticket.checked = true;
+                const result = rollLottery();
+                rankCount[result.rank] = (rankCount[result.rank] || 0) + 1;
+                if (result.prize > 0) {
+                    totalPrize += result.prize;
                 }
             });
-            // 확인 끝난 티켓 정리 (선택)
-            if (any) {
-                lotteryTickets = lotteryTickets.filter(t => !t.checked || (currentDay - t.buyDay < 30));
+
+            cash += totalPrize;
+
+            // 발표 문구: 1등: N장, 2등: N장 ...
+            const lines = [];
+            lines.push(`🎫 [복권 당첨 발표] 총 ${pending.length}장 추첨 결과`);
+            lines.push(`1등: ${rankCount[1]}장`);
+            lines.push(`2등: ${rankCount[2]}장`);
+            lines.push(`3등: ${rankCount[3]}장`);
+            lines.push(`4등: ${rankCount[4]}장`);
+            lines.push(`5등: ${rankCount[5]}장`);
+            lines.push(`낙첨: ${rankCount[0]}장`);
+            if (totalPrize > 0) {
+                lines.push(`합계 상금: ${totalPrize.toLocaleString()}원`);
+                addLog(lines.join(' | '), "good");
+            } else {
+                lines.push(`합계 상금: 0원`);
+                addLog(lines.join(' | '), "bad");
             }
+            alert(lines.join('\n'));
+
+            // 확인 끝난 티켓 정리
+            lotteryTickets = lotteryTickets.filter(t => !t.checked);
         }
 
         function render() {
@@ -1785,7 +1819,7 @@
                 invHtml += `
                     <tr>
                         <td><strong>미확인 복권</strong></td>
-                        <td>구매 후 7일 경과 시 자동 확인</td>
+                        <td>주이자 적용일에 일괄 발표</td>
                         <td>${pendingTickets.length}장</td>
                         <td style="color:#888;">대기중</td>
                     </tr>
