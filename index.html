@@ -442,9 +442,24 @@
                             <button class="labor-sub-btn active" id="btn-shop-furniture" onclick="switchShopTab('furniture')">가구</button>
                             <button class="labor-sub-btn" id="btn-shop-food" onclick="switchShopTab('food')">음식</button>
                             <button class="labor-sub-btn" id="btn-shop-lottery" onclick="switchShopTab('lottery')">복권</button>
+                            <button class="labor-sub-btn" id="btn-shop-dex" onclick="switchShopTab('dex')">📚 가구 도감</button>
                         </div>
                         <p id="shop-tab-desc">방을 꾸밀 가구를 구매하여 특수 효과를 누리세요!</p>
-                        <table class="game-table">
+                        <div id="furniture-dex-box" style="display:none; background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:12px;">
+                            <div id="dex-summary" style="font-weight:bold; margin-bottom:8px;"></div>
+                            <div id="dex-bonuses" style="font-size:0.9em; color:#2c3e50; margin-bottom:10px; line-height:1.5;"></div>
+                            <table class="game-table">
+                                <thead>
+                                    <tr>
+                                        <th>가구</th>
+                                        <th>효과</th>
+                                        <th>수집</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dex-list"></tbody>
+                            </table>
+                        </div>
+                        <table class="game-table" id="shop-table-main">
                             <thead>
                                 <tr>
                                     <th>상품명</th>
@@ -948,11 +963,48 @@
             document.getElementById('btn-shop-furniture').classList.toggle('active', tab === 'furniture');
             document.getElementById('btn-shop-food').classList.toggle('active', tab === 'food');
             document.getElementById('btn-shop-lottery').classList.toggle('active', tab === 'lottery');
+            const dexBtn = document.getElementById('btn-shop-dex');
+            if (dexBtn) dexBtn.classList.toggle('active', tab === 'dex');
             const desc = document.getElementById('shop-tab-desc');
-            if (tab === 'furniture') desc.innerText = '방을 꾸밀 가구를 구매하여 특수 효과를 누리세요! (각 품목 1회만 구매, 다음날 재입고)';
-            else if (tab === 'food') desc.innerText = '배고픔을 회복하는 음식을 구매하세요. (각 품목 1회만 구매, 다음날 재입고)';
-            else desc.innerText = '복권을 여러 장 구매할 수 있습니다. 당첨 발표는 주이자 적용일에 일괄 공개됩니다.';
+            const dexBox = document.getElementById('furniture-dex-box');
+            const shopTable = document.getElementById('shop-table-main');
+            if (tab === 'dex') {
+                desc.innerText = '수집한 가구 도감입니다. 5개마다 영구 보너스가 해금됩니다!';
+                if (dexBox) dexBox.style.display = 'block';
+                if (shopTable) shopTable.style.display = 'none';
+            } else {
+                if (dexBox) dexBox.style.display = 'none';
+                if (shopTable) shopTable.style.display = 'table';
+                if (tab === 'furniture') desc.innerText = '방을 꾸밀 가구를 구매하여 특수 효과를 누리세요! (각 품목 1회만 구매, 다음날 재입고)';
+                else if (tab === 'food') desc.innerText = '배고픔을 회복하는 음식을 구매하세요. (각 품목 1회만 구매, 다음날 재입고)';
+                else desc.innerText = '복권을 여러 장 구매할 수 있습니다. 당첨 발표는 주이자 적용일에 일괄 공개됩니다.';
+            }
             render();
+        }
+
+        function getOwnedFurnitureCount() {
+            return masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery' && i.owned).length;
+        }
+
+        function getTotalFurnitureCount() {
+            return masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery').length;
+        }
+
+        // 5개마다 보너스 단계 (누적)
+        function getFurnitureBonusTier() {
+            return Math.floor(getOwnedFurnitureCount() / 5);
+        }
+
+        function getFurnitureBonuses() {
+            const tier = getFurnitureBonusTier();
+            return {
+                tier,
+                restBonus: tier * 1,          // 휴식 시 추가 체력 회복
+                luckBonus: tier * 0.05,       // 시장 상승 확률 +5%p per tier
+                dailyMoney: tier * 50000,     // 매일 추가 현금
+                maxHpBonus: tier * 1,         // (표시용, 실제 maxHp는 구매 시 반영하지 않고 계산에 가산 가능)
+                hungerResist: tier >= 2 ? 1 : 0 // 2단계 이상: 배고픔 감소 완화 표시
+            };
         }
 
         function getRandomSecretItems() {
@@ -1108,6 +1160,13 @@
             // 비밀상점: 매일 각 아이템 0.5% 확률로 등장
             trySpawnSecretItems();
 
+            // 가구 도감 보너스: 매일 추가 현금
+            const furnBonus = getFurnitureBonuses();
+            if (furnBonus.dailyMoney > 0) {
+                cash += furnBonus.dailyMoney;
+                addLog(`[가구 도감 보너스] 수집 단계 ${furnBonus.tier} → 일일 보너스 ${furnBonus.dailyMoney.toLocaleString()}원 지급!`, "good");
+            }
+
             if (currentEmployedCompany !== null) {
                 let comp = companies[currentEmployedCompany];
                 let salary = Math.floor(cash * comp.rewardRate);
@@ -1146,6 +1205,7 @@
             let pcOwned = masterShopItems.find(i => i.type === 'pc' && i.owned);
             let goodChance = pcOwned ? 0.6 : 0.4;
             if (activeBuffDays > 0) goodChance += 0.3;
+            goodChance += getFurnitureBonuses().luckBonus;
 
             const newsPool = [
                 { text: "글로벌 기술주 대호재 및 수출 급증!", type: "good" },
@@ -1182,6 +1242,7 @@
             let pcOwned = masterShopItems.find(i => i.type === 'pc' && i.owned);
             let bonusGood = pcOwned ? 0.08 : 0;
             if (activeBuffDays > 0) bonusGood += 0.25;
+            bonusGood += getFurnitureBonuses().luckBonus;
 
             [kStocks, uStocks, cryptos].forEach(market => {
                 market.forEach(stock => {
@@ -1253,7 +1314,7 @@
             lastRestTime = now;
 
             let bedOwned = masterShopItems.find(i => i.type === 'bed' && i.owned);
-            let recovery = 5 + (bedOwned ? 5 : 0);
+            let recovery = 5 + (bedOwned ? 5 : 0) + getFurnitureBonuses().restBonus;
             hp = Math.min(maxHp, hp + recovery);
 
             // 하루 진행 + 주식/코인 가격 변동 등 정상 일일 처리
@@ -1271,6 +1332,12 @@
             addLog("🛒 가구 상점의 품목이 새롭게 재입고되었습니다!");
 
             trySpawnSecretItems();
+
+            const furnBonusRest = getFurnitureBonuses();
+            if (furnBonusRest.dailyMoney > 0) {
+                cash += furnBonusRest.dailyMoney;
+                addLog(`[가구 도감 보너스] 수집 단계 ${furnBonusRest.tier} → 일일 보너스 ${furnBonusRest.dailyMoney.toLocaleString()}원 지급!`, "good");
+            }
 
             if (currentEmployedCompany !== null) {
                 let comp = companies[currentEmployedCompany];
@@ -1527,12 +1594,19 @@
                 addLog(`${item.name}을(를) 구매하여 인벤토리에 넣었습니다.`, "good");
             } else {
                 // 가구
+                const prevTier = getFurnitureBonusTier();
                 item.owned = true;
                 if (item.type === 'chair') {
                     maxHp += 5;
                     hp += 5;
                 }
                 addLog(`${item.name}을(를) 구매하여 방에 설치했습니다! (${item.effect})`, "good");
+                const newTier = getFurnitureBonusTier();
+                if (newTier > prevTier) {
+                    const b = getFurnitureBonuses();
+                    addLog(`📚 가구 도감 ${newTier}단계 달성! 휴식+${b.restBonus}, 행운+${(b.luckBonus*100).toFixed(0)}%p, 일일 ${b.dailyMoney.toLocaleString()}원`, "news");
+                    alert(`📚 가구 도감 ${newTier}단계 해금!\n\n휴식 회복 +${b.restBonus}\n시장 행운 +${(b.luckBonus*100).toFixed(0)}%p\n매일 보너스 ${b.dailyMoney.toLocaleString()}원`);
+                }
             }
             render();
         }
@@ -1798,6 +1872,45 @@
                 });
             }
             shopTbody.innerHTML = shopHtml;
+
+            // 가구 도감 렌더
+            const ownedFurn = getOwnedFurnitureCount();
+            const totalFurn = getTotalFurnitureCount();
+            const bonuses = getFurnitureBonuses();
+            const dexSummary = document.getElementById('dex-summary');
+            const dexBonuses = document.getElementById('dex-bonuses');
+            const dexList = document.getElementById('dex-list');
+            if (dexSummary) {
+                const needNext = ownedFurn >= totalFurn ? 0 : (ownedFurn % 5 === 0 ? 5 : (5 - (ownedFurn % 5)));
+                dexSummary.innerText = `수집 현황: ${ownedFurn} / ${totalFurn}  (보너스 단계: ${bonuses.tier}` +
+                    (needNext > 0 ? ` · 다음 단계까지 ${needNext}개)` : ' · 전체 수집 완료!)');
+            }
+            if (dexBonuses) {
+                if (bonuses.tier === 0) {
+                    dexBonuses.innerHTML = '아직 보너스가 없습니다. 가구 5개를 모으면 1단계 보너스가 해금됩니다.<br>' +
+                        '• 1단계(5개): 휴식 회복 +1, 시장 행운 +5%, 일일 보너스 5만원<br>' +
+                        '• 2단계(10개): 위 효과 ×2 + 배고픔 저항<br>' +
+                        '• 3단계 이상: 단계마다 누적 강화';
+                } else {
+                    dexBonuses.innerHTML =
+                        `<strong>현재 적용 중 (단계 ${bonuses.tier})</strong><br>` +
+                        `🛏 휴식 추가 회복: +${bonuses.restBonus}<br>` +
+                        `🍀 시장 상승 확률: +${(bonuses.luckBonus * 100).toFixed(0)}%p<br>` +
+                        `💰 매일 추가 현금: ${bonuses.dailyMoney.toLocaleString()}원` +
+                        (bonuses.tier >= 2 ? '<br>🍽 배고픔 저항 보너스 활성' : '');
+                }
+            }
+            if (dexList) {
+                let dexHtml = '';
+                masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery').forEach(item => {
+                    dexHtml += `<tr>
+                        <td><strong>${item.name}</strong></td>
+                        <td>${item.effect}</td>
+                        <td>${item.owned ? '<span style="color:#27ae60;font-weight:bold;">✔ 수집완료</span>' : '<span style="color:#999;">미수집</span>'}</td>
+                    </tr>`;
+                });
+                dexList.innerHTML = dexHtml;
+            }
 
             let secretTbody = document.getElementById('secret-shop-list');
             let secretHtml = "";
