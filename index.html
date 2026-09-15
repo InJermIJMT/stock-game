@@ -315,6 +315,7 @@
                         <button class="tab-btn" onclick="switchTab('inventory')">🎒 인벤토리</button>
                         <button class="tab-btn" onclick="switchTab('gym')">🏋️ 헬스장</button>
                         <button class="tab-btn" onclick="switchTab('gamble')">🎰 도박</button>
+                        <button class="tab-btn" onclick="switchTab('bedenhance')">🛏️ 침대강화</button>
                     </div>
 
                     <div id="panel-bank" class="content-panel active-panel">
@@ -415,6 +416,10 @@
                                     <span>대기업 단기 인턴 (수당: 6,000,000원 | 체력 소모: 8)</span>
                                     <button onclick="doPartTimeJob('대기업 단기 인턴', 6000000, 8)">근무하기</button>
                                 </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:#e3f2fd; padding:8px; border-radius:4px; border:1px solid #2196f3;">
+                                    <span>🚢 원양어선 (수당: 100,000,000원 | 체력 소모: 50)</span>
+                                    <button onclick="doPartTimeJob('원양어선', 100000000, 50)" style="background-color:#1565c0;">근무하기</button>
+                                </div>
                             </div>
                         </div>
 
@@ -507,15 +512,28 @@
 
                     <div id="panel-gym" class="content-panel">
                         <h3>🏋️ 피트니스 헬스장</h3>
-                        <p>운동 횟수를 입력해 단련하세요. 1회당 체력 -1, 최대 체력 +0.5 (비용: 1회당 200,000원)</p>
+                        <p>운동 횟수를 입력해 단련하세요. 1회당 체력 -1, 최대 체력 +0.5, 최대 배고픔 +0.5 (비용: 1회당 200,000원)</p>
                         <div style="background:#f1f3f5; padding: 15px; border-radius: 6px; margin-top: 15px; text-align: center;">
                             <p style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px;">현재 최대 체력: <span id="gym-max-hp" style="color:#27ae60;">10</span></p>
-                            <p style="font-size: 0.9em; color: #555; margin-bottom: 12px;">1회 비용 200,000원 · 체력 -1 · 최대체력 +0.5</p>
+                            <p style="font-size: 0.9em; color: #555; margin-bottom: 12px;">1회 비용 200,000원 · 체력 -1 · 최대체력 +0.5 · 최대배고픔 +0.5</p>
                             <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:12px;">
                                 <label>운동 횟수:</label>
                                 <input type="number" id="gym-count" value="1" min="1" max="20" style="width:70px; padding:6px; text-align:center;">
                             </div>
                             <button onclick="trainGym()" style="padding: 10px 20px; font-size: 1.1em; background-color: #e67e22;">헬스장에서 운동하기</button>
+                        </div>
+                    </div>
+
+                    
+                    <div id="panel-bedenhance" class="content-panel">
+                        <h3>🛏️ 침대 강화</h3>
+                        <p>침대를 강화하면 휴식 시 체력 회복량이 증가합니다. (1~10강)</p>
+                        <div style="background:#f1f3f5; padding:15px; border-radius:8px; text-align:center;">
+                            <p style="font-size:1.15em; font-weight:bold;">현재 강화: <span id="bed-level-view" style="color:#8e44ad;">0</span>강</p>
+                            <p style="color:#555; margin:8px 0;">다음 강화 성공 확률: <span id="bed-success-rate">100</span>%</p>
+                            <p style="color:#555; margin-bottom:12px;">강화 비용: <span id="bed-enhance-cost">1,000,000</span>원 · 성공 시 휴식 회복 +2 (강당)</p>
+                            <button onclick="enhanceBed()" style="padding:10px 22px; font-size:1.05em; background:#8e44ad;">강화 시도</button>
+                            <p id="bed-enhance-log" style="margin-top:10px; font-size:0.9em;"></p>
                         </div>
                     </div>
 
@@ -599,6 +617,7 @@
         let turnsUntilInterest = 7;
 
         let activeBuffDays = 0;
+        let bedLevel = 0; // 침대 강화 0~10
         let lastRestTime = 0; // 침대 휴식 쿨타임용 (ms)
 
         let kStocks = [
@@ -638,44 +657,113 @@
         ];
 
         const masterShopItems = [
-            { id: 0, name: "편안한 침대", effect: "휴식 체력 회복량 +5 증가", price: 1000000, type: "bed" },
-            { id: 1, name: "고성능 PC", effect: "주식 호재 확률 증가", price: 5000000, type: "pc" },
-            { id: 2, name: "인체공학 의자", effect: "플레이어 최대 체력 +5 증가", price: 3000000, type: "chair" },
-            { id: 3, name: "고급 가죽 소파", effect: "휴식 체력 회복량 +3 증가", price: 2000000, type: "furniture" },
-            { id: 4, name: "디자이너 책상", effect: "스펙 성장 속도 보조", price: 4000000, type: "furniture" },
-            { id: 5, name: "대형 스크린 TV", effect: "심리적 안정 (최대 체력 +2)", price: 3500000, type: "furniture" },
-            { id: 6, name: "프리미엄 오디오 시스템", effect: "삶의 질 향상", price: 2500000, type: "furniture" },
-            { id: 7, name: "실내 공기청정기", effect: "건강 유지 (최대 체력 +2)", price: 1500000, type: "furniture" },
-            { id: 8, name: "스마트 커피 머신", effect: "피로 완화", price: 800000, type: "furniture" },
-            { id: 9, name: "고급 샹들리에", effect: "방 분위기 럭셔리", price: 6000000, type: "furniture" },
-            { id: 10, name: "명품 페인팅 액자", effect: "예술적 감각 상승", price: 7000000, type: "furniture" },
-            { id: 11, name: "원목 책꽂이", effect: "지적 소양 상승", price: 1200000, type: "furniture" },
-            { id: 12, name: "스마트 냉장고", effect: "신선한 간식 보관", price: 4500000, type: "furniture" },
-            { id: 13, name: "안마의자", effect: "휴식 시 추가 체력 회복 +4", price: 8000000, type: "furniture" },
-            { id: 14, name: "러닝머신", effect: "홈트레이닝 가능 (최대 체력 +3)", price: 5500000, type: "furniture" },
-            { id: 15, name: "고급 카페펫", effect: "아늑한 방 분위기", price: 900000, type: "furniture" },
-            { id: 16, name: "커스텀 게이밍 데스크", effect: "PC 효율 극대화", price: 6500000, type: "pc" },
-            { id: 17, name: "전신 거울", effect: "자기관리 향상", price: 500000, type: "furniture" },
-            { id: 18, name: "스마트 커튼", effect: "완벽한 수면 환경", price: 1800000, type: "furniture" },
-            { id: 19, name: "수족관", effect: "심신 안정", price: 3200000, type: "furniture" },
-            { id: 20, name: "와인 셀러", effect: "고급 취미", price: 7500000, type: "furniture" },
-            { id: 21, name: "AI 홈 허브", effect: "가전 제어 자동화", price: 4200000, type: "furniture" },
-            { id: 22, name: "스타일러 의류 관리기", effect: "직장인 신용도 상승", price: 3800000, type: "furniture" },
-            { id: 23, name: "고급 원목 식탁", effect: "여유로운 식사", price: 2200000, type: "furniture" },
-            { id: 24, name: "무중력 릴렉스 체어", effect: "휴식 효율 극대화", price: 4800000, type: "furniture" },
-            { id: 25, name: "무드등 스탠드", effect: "아늑한 조명", price: 400000, type: "furniture" },
-            { id: 26, name: "명품 카펫", effect: "바닥 온기 유지", price: 1600000, type: "furniture" },
-            { id: 27, name: "스마트 홈시어터", effect: "여가 생활 만족도 상승", price: 9500000, type: "furniture" },
-            { id: 28, name: "실내 미니 정원", effect: "산소 공급 및 힐링", price: 2900000, type: "furniture" },
-            { id: 29, name: "골드바 장식장", effect: "부의 상징 (자산 가치 연동)", price: 15000000, type: "furniture" },
-            // 음식 아이템 (상점에서 판매, 인벤토리에 저장 후 섭취)
+            { id: 0, name: "편안한 침대", effect: "[커먼] 휴식 회복 +5", price: 1000000, type: "bed", rarity: "common", stats: {"restHeal": 5}, owned: false },
+            { id: 1, name: "고성능 PC", effect: "[언커먼] 호재확률 +10%", price: 5000000, type: "pc", rarity: "uncommon", stats: {"luck": 0.1}, owned: false },
+            { id: 2, name: "인체공학 의자", effect: "[언커먼] 최대체력 +5", price: 3000000, type: "chair", rarity: "uncommon", stats: {"maxHp": 5}, owned: false },
+            { id: 3, name: "고급 가죽 소파", effect: "[커먼] 휴식 회복 +3", price: 900000, type: "furniture", rarity: "common", stats: {"restHeal": 3}, owned: false },
+            { id: 4, name: "디자이너 책상", effect: "[언커먼] 스펙보너스 +0.5", price: 3166666, type: "furniture", rarity: "uncommon", stats: {"specBonus": 0.5}, owned: false },
+            { id: 5, name: "대형 스크린 TV", effect: "[커먼] 최대체력 +2", price: 1300000, type: "furniture", rarity: "common", stats: {"maxHp": 2}, owned: false },
+            { id: 6, name: "프리미엄 오디오", effect: "[커먼] 휴식 회복 +1", price: 1500000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 7, name: "실내 공기청정기", effect: "[커먼] 최대체력 +2", price: 300000, type: "furniture", rarity: "common", stats: {"maxHp": 2}, owned: false },
+            { id: 8, name: "스마트 커피 머신", effect: "[커먼] 휴식 회복 +1", price: 500000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 9, name: "고급 샹들리에", effect: "[레어] 일일 +30,000원", price: 6666666, type: "furniture", rarity: "rare", stats: {"dailyMoney": 30000}, owned: false },
+            { id: 10, name: "명품 페인팅 액자", effect: "[레어] 호재확률 +5%", price: 8000000, type: "furniture", rarity: "rare", stats: {"luck": 0.05}, owned: false },
+            { id: 11, name: "원목 책꽂이", effect: "[커먼] 스펙보너스 +0.25", price: 1100000, type: "furniture", rarity: "common", stats: {"specBonus": 0.25}, owned: false },
+            { id: 12, name: "스마트 냉장고", effect: "[언커먼] 최대배고픔 +1", price: 3583333, type: "furniture", rarity: "uncommon", stats: {"maxHunger": 1}, owned: false },
+            { id: 13, name: "안마의자", effect: "[레어] 휴식 회복 +4", price: 12000000, type: "furniture", rarity: "rare", stats: {"restHeal": 4}, owned: false },
+            { id: 14, name: "러닝머신", effect: "[언커먼] 최대체력 +3", price: 1500000, type: "furniture", rarity: "uncommon", stats: {"maxHp": 3}, owned: false },
+            { id: 15, name: "고급 카페트", effect: "[커먼] 휴식 회복 +1", price: 500000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 16, name: "커스텀 게이밍 데스크", effect: "[레어] 호재확률 +12%", price: 6666666, type: "pc", rarity: "rare", stats: {"luck": 0.12}, owned: false },
+            { id: 17, name: "전신 거울", effect: "[커먼] 최대체력 +1", price: 900000, type: "furniture", rarity: "common", stats: {"maxHp": 1}, owned: false },
+            { id: 18, name: "스마트 커튼", effect: "[커먼] 휴식 회복 +2", price: 1100000, type: "furniture", rarity: "common", stats: {"restHeal": 2}, owned: false },
+            { id: 19, name: "수족관", effect: "[언커먼] 휴식 회복 +2", price: 3583333, type: "furniture", rarity: "uncommon", stats: {"restHeal": 2}, owned: false },
+            { id: 20, name: "와인 셀러", effect: "[레어] 일일 +50,000원", price: 12000000, type: "furniture", rarity: "rare", stats: {"dailyMoney": 50000}, owned: false },
+            { id: 21, name: "AI 홈 허브", effect: "[에픽] 비밀상점 +0.20%p", price: 12000000, type: "furniture", rarity: "epic", stats: {"secretChance": 0.002}, owned: false },
+            { id: 22, name: "스타일러", effect: "[언커먼] 스펙보너스 +0.5", price: 1916666, type: "furniture", rarity: "uncommon", stats: {"specBonus": 0.5}, owned: false },
+            { id: 23, name: "고급 원목 식탁", effect: "[커먼] 최대배고픔 +1", price: 700000, type: "furniture", rarity: "common", stats: {"maxHunger": 1}, owned: false },
+            { id: 24, name: "무중력 릴렉스 체어", effect: "[레어] 휴식 회복 +5", price: 8000000, type: "furniture", rarity: "rare", stats: {"restHeal": 5}, owned: false },
+            { id: 25, name: "무드등 스탠드", effect: "[커먼] 휴식 회복 +1", price: 1100000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 26, name: "명품 카펫", effect: "[언커먼] 일일 +20,000원", price: 3583333, type: "furniture", rarity: "uncommon", stats: {"dailyMoney": 20000}, owned: false },
+            { id: 27, name: "스마트 홈시어터", effect: "[에픽] 호재확률 +8%", price: 35000000, type: "furniture", rarity: "epic", stats: {"luck": 0.08}, owned: false },
+            { id: 28, name: "실내 미니 정원", effect: "[언커먼] 최대체력 +2", price: 1500000, type: "furniture", rarity: "uncommon", stats: {"maxHp": 2}, owned: false },
+            { id: 29, name: "골드바 장식장", effect: "[레전더리] 일일 +200,000원", price: 15000000, type: "furniture", rarity: "legendary", stats: {"dailyMoney": 200000}, owned: false },
+            { id: 30, name: "라텍스 매트리스", effect: "[언커먼] 휴식 회복 +3", price: 2333333, type: "furniture", rarity: "uncommon", stats: {"restHeal": 3}, owned: false },
+            { id: 31, name: "듀얼모니터 스탠드", effect: "[언커먼] 호재확률 +6%", price: 2750000, type: "pc", rarity: "uncommon", stats: {"luck": 0.06}, owned: false },
+            { id: 32, name: "게이밍 의자", effect: "[언커먼] 최대체력 +3", price: 3166666, type: "chair", rarity: "uncommon", stats: {"maxHp": 3}, owned: false },
+            { id: 33, name: "미니 바 카트", effect: "[커먼] 일일 +10,000원", price: 1300000, type: "furniture", rarity: "common", stats: {"dailyMoney": 10000}, owned: false },
+            { id: 34, name: "전자책 리더 독", effect: "[커먼] 스펙보너스 +0.25", price: 1500000, type: "furniture", rarity: "common", stats: {"specBonus": 0.25}, owned: false },
+            { id: 35, name: "벽걸이 시계", effect: "[커먼] 휴식 회복 +1", price: 300000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 36, name: "블루투스 스피커", effect: "[커먼] 휴식 회복 +1", price: 500000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 37, name: "히터 온열매트", effect: "[커먼] 최대체력 +1", price: 700000, type: "furniture", rarity: "common", stats: {"maxHp": 1}, owned: false },
+            { id: 38, name: "가습기", effect: "[커먼] 최대체력 +1", price: 900000, type: "furniture", rarity: "common", stats: {"maxHp": 1}, owned: false },
+            { id: 39, name: "제습기", effect: "[커먼] 최대체력 +1", price: 1100000, type: "furniture", rarity: "common", stats: {"maxHp": 1}, owned: false },
+            { id: 40, name: "스마트 조명 키트", effect: "[언커먼] 비밀상점 +0.10%p", price: 3583333, type: "furniture", rarity: "uncommon", stats: {"secretChance": 0.001}, owned: false },
+            { id: 41, name: "금고", effect: "[레어] 일일 +80,000원", price: 12000000, type: "furniture", rarity: "rare", stats: {"dailyMoney": 80000}, owned: false },
+            { id: 42, name: "명품 시계 진열대", effect: "[레어] 호재확률 +7%", price: 4000000, type: "furniture", rarity: "rare", stats: {"luck": 0.07}, owned: false },
+            { id: 43, name: "요가 매트 세트", effect: "[커먼] 최대체력 +2", price: 500000, type: "furniture", rarity: "common", stats: {"maxHp": 2}, owned: false },
+            { id: 44, name: "덤벨 세트", effect: "[언커먼] 최대체력 +3", price: 2333333, type: "furniture", rarity: "uncommon", stats: {"maxHp": 3}, owned: false },
+            { id: 45, name: "실내 자전거", effect: "[레어] 최대체력 +4", price: 8000000, type: "furniture", rarity: "rare", stats: {"maxHp": 4}, owned: false },
+            { id: 46, name: "사우나 부스", effect: "[에픽] 휴식 회복 +6, 최대체력 +3", price: 27333333, type: "furniture", rarity: "epic", stats: {"restHeal": 6, "maxHp": 3}, owned: false },
+            { id: 47, name: "캡슐 커피바", effect: "[언커먼] 휴식 회복 +2", price: 3583333, type: "furniture", rarity: "uncommon", stats: {"restHeal": 2}, owned: false },
+            { id: 48, name: "와인 랙", effect: "[언커먼] 일일 +25,000원", price: 4000000, type: "furniture", rarity: "uncommon", stats: {"dailyMoney": 25000}, owned: false },
+            { id: 49, name: "레코드 플레이어", effect: "[레어] 호재확률 +5%", price: 4000000, type: "furniture", rarity: "rare", stats: {"luck": 0.05}, owned: false },
+            { id: 50, name: "빔프로젝터", effect: "[레어] 호재확률 +6%", price: 5333333, type: "furniture", rarity: "rare", stats: {"luck": 0.06}, owned: false },
+            { id: 51, name: "스마트 도어락", effect: "[커먼] 비밀상점 +0.05%p", price: 700000, type: "furniture", rarity: "common", stats: {"secretChance": 0.0005}, owned: false },
+            { id: 52, name: "CCTV 키트", effect: "[언커먼] 비밀상점 +0.10%p", price: 2750000, type: "furniture", rarity: "uncommon", stats: {"secretChance": 0.001}, owned: false },
+            { id: 53, name: "서버랙 미니", effect: "[에픽] 호재확률 +15%, 비밀상점 +0.30%p", price: 27333333, type: "pc", rarity: "epic", stats: {"luck": 0.15, "secretChance": 0.003}, owned: false },
+            { id: 54, name: "양자 연산 키트", effect: "[신화] 호재확률 +25%, 비밀상점 +0.80%p", price: 400000000, type: "pc", rarity: "mythic", stats: {"luck": 0.25, "secretChance": 0.008}, owned: false },
+            { id: 55, name: "황금 침대 프레임", effect: "[레전더리] 휴식 회복 +10", price: 100000000, type: "bed", rarity: "legendary", stats: {"restHeal": 10}, owned: false },
+            { id: 56, name: "구름 소파", effect: "[에픽] 휴식 회복 +7", price: 12000000, type: "furniture", rarity: "epic", stats: {"restHeal": 7}, owned: false },
+            { id: 57, name: "마사지 건 스테이션", effect: "[언커먼] 휴식 회복 +3", price: 1916666, type: "furniture", rarity: "uncommon", stats: {"restHeal": 3}, owned: false },
+            { id: 58, name: "아로마 디퓨저", effect: "[커먼] 휴식 회복 +2", price: 700000, type: "furniture", rarity: "common", stats: {"restHeal": 2}, owned: false },
+            { id: 59, name: "정수기", effect: "[커먼] 최대배고픔 +1", price: 900000, type: "furniture", rarity: "common", stats: {"maxHunger": 1}, owned: false },
+            { id: 60, name: "김치냉장고", effect: "[언커먼] 최대배고픔 +2", price: 3166666, type: "furniture", rarity: "uncommon", stats: {"maxHunger": 2}, owned: false },
+            { id: 61, name: "에어프라이어 스테이션", effect: "[커먼] 최대배고픔 +1", price: 1300000, type: "furniture", rarity: "common", stats: {"maxHunger": 1}, owned: false },
+            { id: 62, name: "홈바 풀세트", effect: "[레어] 일일 +60,000원, 최대배고픔 +1", price: 12000000, type: "furniture", rarity: "rare", stats: {"dailyMoney": 60000, "maxHunger": 1}, owned: false },
+            { id: 63, name: "골프 시뮬레이터", effect: "[에픽] 호재확률 +10%, 일일 +100,000원", price: 12000000, type: "furniture", rarity: "epic", stats: {"luck": 0.1, "dailyMoney": 100000}, owned: false },
+            { id: 64, name: "당구대", effect: "[레어] 일일 +40,000원", price: 5333333, type: "furniture", rarity: "rare", stats: {"dailyMoney": 40000}, owned: false },
+            { id: 65, name: "다트보드", effect: "[커먼] 호재확률 +2%", price: 700000, type: "furniture", rarity: "common", stats: {"luck": 0.02}, owned: false },
+            { id: 66, name: "보드게임 장식장", effect: "[커먼] 스펙보너스 +0.25", price: 900000, type: "furniture", rarity: "common", stats: {"specBonus": 0.25}, owned: false },
+            { id: 67, name: "지구본 스탠드", effect: "[커먼] 스펙보너스 +0.25", price: 1100000, type: "furniture", rarity: "common", stats: {"specBonus": 0.25}, owned: false },
+            { id: 68, name: "천체 망원경", effect: "[레어] 호재확률 +8%", price: 10666666, type: "furniture", rarity: "rare", stats: {"luck": 0.08}, owned: false },
+            { id: 69, name: "현미경 세트", effect: "[언커먼] 스펙보너스 +0.5", price: 4000000, type: "furniture", rarity: "uncommon", stats: {"specBonus": 0.5}, owned: false },
+            { id: 70, name: "도서관 장식 벽", effect: "[에픽] 스펙보너스 +1.0", price: 12000000, type: "furniture", rarity: "epic", stats: {"specBonus": 1.0}, owned: false },
+            { id: 71, name: "명상 쿠션", effect: "[커먼] 휴식 회복 +2", price: 500000, type: "furniture", rarity: "common", stats: {"restHeal": 2}, owned: false },
+            { id: 72, name: "향초 세트", effect: "[커먼] 휴식 회복 +1", price: 700000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 73, name: "크리스탈 장식", effect: "[레어] 호재확률 +6%", price: 8000000, type: "furniture", rarity: "rare", stats: {"luck": 0.06}, owned: false },
+            { id: 74, name: "다이아몬드 디스플레이", effect: "[레전더리] 호재확률 +10%, 일일 +300,000원", price: 78333333, type: "furniture", rarity: "legendary", stats: {"dailyMoney": 300000, "luck": 0.1}, owned: false },
+            { id: 75, name: "드래곤 조각상", effect: "[신화] 호재확률 +20%, 일일 +500,000원, 비밀상점 +0.50%p", price: 500000000, type: "furniture", rarity: "mythic", stats: {"luck": 0.2, "dailyMoney": 500000, "secretChance": 0.005}, owned: false },
+            { id: 76, name: "운석 조각 장식", effect: "[신화] 호재확률 +18%, 비밀상점 +0.60%p", price: 500000000, type: "furniture", rarity: "mythic", stats: {"luck": 0.18, "secretChance": 0.006}, owned: false },
+            { id: 77, name: "황금 돼지 저금통", effect: "[언커먼] 일일 +35,000원", price: 1500000, type: "furniture", rarity: "uncommon", stats: {"dailyMoney": 35000}, owned: false },
+            { id: 78, name: "주식 전광판 미니", effect: "[레어] 호재확률 +12%", price: 5333333, type: "pc", rarity: "rare", stats: {"luck": 0.12}, owned: false },
+            { id: 79, name: "트레이딩 데스크", effect: "[에픽] 호재확률 +18%", price: 19666666, type: "pc", rarity: "epic", stats: {"luck": 0.18}, owned: false },
+            { id: 80, name: "비밀 통로 책장", effect: "[레전더리] 비밀상점 +1.00%p", price: 67500000, type: "furniture", rarity: "legendary", stats: {"secretChance": 0.01}, owned: false },
+            { id: 81, name: "암시장 안테나", effect: "[신화] 비밀상점 +1.50%p", price: 366666666, type: "furniture", rarity: "mythic", stats: {"secretChance": 0.015}, owned: false },
+            { id: 82, name: "럭셔리 옷장", effect: "[레어] 스펙보너스 +0.75", price: 10666666, type: "furniture", rarity: "rare", stats: {"specBonus": 0.75}, owned: false },
+            { id: 83, name: "파우더룸 세트", effect: "[언커먼] 최대체력 +2", price: 4000000, type: "furniture", rarity: "uncommon", stats: {"maxHp": 2}, owned: false },
+            { id: 84, name: "족욕기", effect: "[커먼] 휴식 회복 +2", price: 300000, type: "furniture", rarity: "common", stats: {"restHeal": 2}, owned: false },
+            { id: 85, name: "안마 베개", effect: "[커먼] 휴식 회복 +2", price: 500000, type: "furniture", rarity: "common", stats: {"restHeal": 2}, owned: false },
+            { id: 86, name: "수면 안대 키트", effect: "[커먼] 휴식 회복 +1", price: 700000, type: "furniture", rarity: "common", stats: {"restHeal": 1}, owned: false },
+            { id: 87, name: "화이트노이즈 머신", effect: "[언커먼] 휴식 회복 +3", price: 2750000, type: "furniture", rarity: "uncommon", stats: {"restHeal": 3}, owned: false },
+            { id: 88, name: "스마트 매트리스 커버", effect: "[레어] 휴식 회복 +6", price: 9333333, type: "bed", rarity: "rare", stats: {"restHeal": 6}, owned: false },
+            { id: 89, name: "황금 이불", effect: "[레전더리] 휴식 회복 +12", price: 89166666, type: "bed", rarity: "legendary", stats: {"restHeal": 12}, owned: false },
+            { id: 90, name: "신화의 침구", effect: "[신화] 휴식 회복 +20, 최대체력 +5", price: 350000000, type: "bed", rarity: "mythic", stats: {"restHeal": 20, "maxHp": 5}, owned: false },
+            { id: 91, name: "에너지 드링크 냉장고", effect: "[언커먼] 휴식 회복 +1, 최대배고픔 +1", price: 1500000, type: "furniture", rarity: "uncommon", stats: {"maxHunger": 1, "restHeal": 1}, owned: false },
+            { id: 92, name: "프로틴 쉐이커 바", effect: "[커먼] 최대체력 +2", price: 500000, type: "furniture", rarity: "common", stats: {"maxHp": 2}, owned: false },
+            { id: 93, name: "홈짐 풀세트", effect: "[에픽] 최대체력 +8, 최대배고픔 +2", price: 19666666, type: "furniture", rarity: "epic", stats: {"maxHp": 8, "maxHunger": 2}, owned: false },
+            { id: 94, name: "VIP 라운지 세트", effect: "[레전더리] 휴식 회복 +8, 일일 +250,000원", price: 67500000, type: "furniture", rarity: "legendary", stats: {"dailyMoney": 250000, "restHeal": 8}, owned: false },
+            { id: 95, name: "억만장자 오피스", effect: "[신화] 호재확률 +22%, 일일 +800,000원, 스펙보너스 +2", price: 600000000, type: "furniture", rarity: "mythic", stats: {"luck": 0.22, "dailyMoney": 800000, "specBonus": 2}, owned: false },
+            { id: 96, name: "행운의 부적 선반", effect: "[레어] 호재확률 +9%", price: 10666666, type: "furniture", rarity: "rare", stats: {"luck": 0.09}, owned: false },
+            { id: 97, name: "복 주머니 장식", effect: "[언커먼] 호재확률 +4%, 일일 +15,000원", price: 4000000, type: "furniture", rarity: "uncommon", stats: {"luck": 0.04, "dailyMoney": 15000}, owned: false },
+            { id: 98, name: "야광 별자리 천장", effect: "[에픽] 휴식 회복 +4, 호재확률 +11%", price: 12000000, type: "furniture", rarity: "epic", stats: {"luck": 0.11, "restHeal": 4}, owned: false },
+            { id: 99, name: "타임캡슐 금고", effect: "[레전더리] 일일 +150,000원, 비밀상점 +0.80%p", price: 45833333, type: "furniture", rarity: "legendary", stats: {"secretChance": 0.008, "dailyMoney": 150000}, owned: false },
             { id: 100, name: "삼각김밥", effect: "배고픔 +1 회복", price: 1500, type: "food", hungerRestore: 1 },
             { id: 101, name: "편의점 도시락", effect: "배고픔 +2 회복", price: 4500, type: "food", hungerRestore: 2 },
             { id: 102, name: "치킨 한 마리", effect: "배고픔 +3 회복", price: 18000, type: "food", hungerRestore: 3 },
             { id: 103, name: "한정식 정식", effect: "배고픔 +5 회복", price: 35000, type: "food", hungerRestore: 5 },
             { id: 104, name: "특급 코스 요리", effect: "배고픔 완전 회복", price: 80000, type: "food", hungerRestore: 7 },
-            // 복권
             { id: 200, name: "즉석식 복권", effect: "여러 장 구매 가능 (주이자 적용일에 일괄 발표)", price: 2000, type: "lottery" }
+
         ];
 
         let currentShopPool = []; // { ...item, soldOut: false }
@@ -864,6 +952,7 @@
                 isFainting = parsed.isFainting || false;
                 faintingDaysLeft = parsed.faintingDaysLeft || 0;
                 hunger = parsed.hunger !== undefined ? parsed.hunger : 7;
+                bedLevel = parsed.bedLevel || 0;
                 maxHunger = parsed.maxHunger || 7;
                 lotteryTickets = parsed.lotteryTickets || [];
                 nextLotteryId = parsed.nextLotteryId || 1;
@@ -929,7 +1018,7 @@
         function completeProfileSetup() {
             cash = 0; bankBalance = 0; loanBalance = 0; collateralLoanBalance = 0; collateralLockDays = 0;
             maxHp = 10; hp = 10; isFainting = false; faintingDaysLeft = 0;
-            hunger = 7; maxHunger = 7; hungerTickCounter = 0;
+            hunger = 7; maxHunger = 7; hungerTickCounter = 0; bedLevel = 0;
             lotteryTickets = []; nextLotteryId = 1;
             specCount = 0; specTurnCounter = 0; currentEmployedCompany = null; lastJobApplyDay = -999;
             currentDay = 1; turnsUntilInterest = 7;
@@ -982,30 +1071,57 @@
             render();
         }
 
+
+        function isFurnitureItem(i) {
+            return i && i.type !== 'food' && i.type !== 'lottery';
+        }
+
         function getOwnedFurnitureCount() {
-            return masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery' && i.owned).length;
+            return masterShopItems.filter(i => isFurnitureItem(i) && i.owned).length;
         }
 
         function getTotalFurnitureCount() {
-            return masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery').length;
+            return masterShopItems.filter(i => isFurnitureItem(i)).length;
         }
 
-        // 5개마다 보너스 단계 (누적)
         function getFurnitureBonusTier() {
             return Math.floor(getOwnedFurnitureCount() / 5);
         }
 
+        // 소유 가구 stats 합산 + 5개 단계 보너스
         function getFurnitureBonuses() {
             const tier = getFurnitureBonusTier();
+            let restHeal = tier * 1;
+            let luck = tier * 0.05;
+            let dailyMoney = tier * 50000;
+            let secretChance = 0;
+            let maxHp = 0;
+            let maxHunger = 0;
+            let specBonus = 0;
+            masterShopItems.forEach(i => {
+                if (!isFurnitureItem(i) || !i.owned || !i.stats) return;
+                const s = i.stats;
+                restHeal += s.restHeal || 0;
+                luck += s.luck || 0;
+                dailyMoney += s.dailyMoney || 0;
+                secretChance += s.secretChance || 0;
+                maxHp += s.maxHp || 0;
+                maxHunger += s.maxHunger || 0;
+                specBonus += s.specBonus || 0;
+            });
             return {
                 tier,
-                restBonus: tier * 1,          // 휴식 시 추가 체력 회복
-                luckBonus: tier * 0.05,       // 시장 상승 확률 +5%p per tier
-                dailyMoney: tier * 50000,     // 매일 추가 현금
-                maxHpBonus: tier * 1,         // (표시용, 실제 maxHp는 구매 시 반영하지 않고 계산에 가산 가능)
-                hungerResist: tier >= 2 ? 1 : 0 // 2단계 이상: 배고픔 감소 완화 표시
+                restBonus: restHeal,
+                luckBonus: luck,
+                dailyMoney,
+                secretChance,
+                maxHpBonus: maxHp,
+                maxHungerBonus: maxHunger,
+                specBonus,
+                hungerResist: tier >= 2 ? 1 : 0
             };
         }
+
 
         function getRandomSecretItems() {
             // 기존 호환용 (초기 생성 시)
@@ -1018,7 +1134,8 @@
             secretItemPool.forEach(base => {
                 const already = currentSecretShopPool.find(s => s.id === base.id && !s.soldOut);
                 if (already) return;
-                if (Math.random() < 0.005) { // 0.5%
+                const secBonus = (typeof getFurnitureBonuses === 'function' ? getFurnitureBonuses().secretChance : 0);
+                if (Math.random() < (0.005 + secBonus)) { // 기본 0.5% + 가구
                     currentSecretShopPool.push({...base, soldOut: false});
                     spawned.push(base.name);
                 }
@@ -1314,7 +1431,7 @@
             lastRestTime = now;
 
             let bedOwned = masterShopItems.find(i => i.type === 'bed' && i.owned);
-            let recovery = 5 + (bedOwned ? 5 : 0) + getFurnitureBonuses().restBonus;
+            let recovery = 5 + (bedOwned ? 5 : 0) + getFurnitureBonuses().restBonus + (bedLevel * 2);
             hp = Math.min(maxHp, hp + recovery);
 
             // 하루 진행 + 주식/코인 가격 변동 등 정상 일일 처리
@@ -1381,7 +1498,7 @@
             const saveData = {
                 name: playerName, gender: playerGender, cash, bankBalance, loanBalance,
                 collateralLoanBalance, collateralLockDays, maxHp, hp, isFainting, faintingDaysLeft,
-                hunger, maxHunger, lotteryTickets, nextLotteryId,
+                hunger, maxHunger, bedLevel, lotteryTickets, nextLotteryId,
                 specCount, specTurnCounter, currentEmployedCompany, lastJobApplyDay, kStocks, uStocks, cryptos,
                 masterShopItems: masterShopItems.map(m => ({ id: m.id, owned: m.owned })),
                 currentShopPool, currentSecretShopPool, secretShopRestockDay, inventory, activeBuffDays, currentDay, turnsUntilInterest
@@ -1525,6 +1642,36 @@
             render();
         }
 
+
+        // 침대 강화 성공률: 1강 100% ... 10강 0.1%
+        const BED_ENHANCE_RATES = [1.0, 0.70, 0.40, 0.25, 0.15, 0.08, 0.04, 0.02, 0.005, 0.001];
+        function getBedEnhanceRate() {
+            if (bedLevel >= 10) return 0;
+            return BED_ENHANCE_RATES[bedLevel] || 0;
+        }
+        function getBedEnhanceCost() {
+            return Math.floor(1000000 * Math.pow(1.8, bedLevel));
+        }
+        function enhanceBed() {
+            if (checkFaintingState()) return;
+            if (bedLevel >= 10) { alert("이미 최대 강화(10강)입니다!"); return; }
+            const cost = getBedEnhanceCost();
+            const rate = getBedEnhanceRate();
+            if (cash < cost) { alert(`현금이 부족합니다! (필요: ${cost.toLocaleString()}원)`); return; }
+            cash -= cost;
+            if (Math.random() < rate) {
+                bedLevel++;
+                addLog(`🛏️ 침대 강화 성공! 현재 ${bedLevel}강 (휴식 회복 보너스 +${bedLevel * 2})`, "good");
+                const log = document.getElementById('bed-enhance-log');
+                if (log) log.innerHTML = `<span style="color:#27ae60;">성공! ${bedLevel}강 달성</span>`;
+            } else {
+                addLog(`🛏️ 침대 강화 실패... (비용 ${cost.toLocaleString()}원 소모, 단계 유지 ${bedLevel}강)`, "bad");
+                const log = document.getElementById('bed-enhance-log');
+                if (log) log.innerHTML = `<span style="color:#e74c3c;">실패... 단계 유지 (${bedLevel}강)</span>`;
+            }
+            render();
+        }
+
         function trainGym() {
             if (checkFaintingState()) return;
             let countInput = document.getElementById('gym-count');
@@ -1540,9 +1687,10 @@
             cash -= totalCost;
             consumeHp(count); // 1회당 체력 -1
             maxHp += count * 0.5; // 1회당 최대체력 +0.5
-            // 소수점 체력 표시를 위해 소수점 1자리 유지
+            maxHunger += count * 0.5; // 1회당 최대 배고픔 +0.5
             maxHp = Math.round(maxHp * 10) / 10;
-            addLog(`헬스장 운동 ${count}회 완료! 체력 ${count} 소모, 최대 체력 +${(count * 0.5).toFixed(1)} (현재 최대: ${maxHp})`, "good");
+            maxHunger = Math.round(maxHunger * 10) / 10;
+            addLog(`헬스장 운동 ${count}회 완료! 체력 ${count} 소모, 최대체력 +${(count * 0.5).toFixed(1)}, 최대배고픔 +${(count * 0.5).toFixed(1)} (체력 ${maxHp} / 배고픔 ${maxHunger})`, "good");
             render();
         }
 
@@ -1596,9 +1744,11 @@
                 // 가구
                 const prevTier = getFurnitureBonusTier();
                 item.owned = true;
-                if (item.type === 'chair') {
-                    maxHp += 5;
-                    hp += 5;
+                if (item.stats) {
+                    if (item.stats.maxHp) { maxHp += item.stats.maxHp; hp += item.stats.maxHp; }
+                    if (item.stats.maxHunger) { maxHunger += item.stats.maxHunger; hunger = Math.min(maxHunger, hunger + item.stats.maxHunger); }
+                } else if (item.type === 'chair') {
+                    maxHp += 5; hp += 5;
                 }
                 addLog(`${item.name}을(를) 구매하여 방에 설치했습니다! (${item.effect})`, "good");
                 const newTier = getFurnitureBonusTier();
@@ -1736,6 +1886,14 @@
 
             document.getElementById('hp-status').innerText = `${hp} / ${maxHp}`;
             document.getElementById('gym-max-hp').innerText = maxHp;
+
+            const bedLvView = document.getElementById('bed-level-view');
+            if (bedLvView) bedLvView.innerText = bedLevel;
+            const bedRate = document.getElementById('bed-success-rate');
+            if (bedRate) bedRate.innerText = bedLevel >= 10 ? 'MAX' : (getBedEnhanceRate() * 100).toFixed(bedLevel >= 8 ? 2 : 0);
+            const bedCost = document.getElementById('bed-enhance-cost');
+            if (bedCost) bedCost.innerText = bedLevel >= 10 ? '-' : getBedEnhanceCost().toLocaleString();
+
             
             let hpPercent = (hp / maxHp) * 100;
             document.getElementById('hp-bar-fill').style.width = `${hpPercent}%`;
@@ -1893,18 +2051,24 @@
                         '• 3단계 이상: 단계마다 누적 강화';
                 } else {
                     dexBonuses.innerHTML =
-                        `<strong>현재 적용 중 (단계 ${bonuses.tier})</strong><br>` +
-                        `🛏 휴식 추가 회복: +${bonuses.restBonus}<br>` +
-                        `🍀 시장 상승 확률: +${(bonuses.luckBonus * 100).toFixed(0)}%p<br>` +
-                        `💰 매일 추가 현금: ${bonuses.dailyMoney.toLocaleString()}원` +
+                        `<strong>현재 적용 중 (도감단계 ${bonuses.tier} + 개별 가구 효과 합산)</strong><br>` +
+                        `🛏 휴식 추가 회복: +${bonuses.restBonus}` + (bedLevel ? ` (침대강화 ${bedLevel}강 별도 +${bedLevel*2})` : '') + `<br>` +
+                        `🍀 호재/상승 확률: +${(bonuses.luckBonus * 100).toFixed(1)}%p<br>` +
+                        `💰 매일 추가 현금: ${bonuses.dailyMoney.toLocaleString()}원<br>` +
+                        `🕵️ 비밀상점 등장: +${((bonuses.secretChance||0)*100).toFixed(2)}%p<br>` +
+                        `❤️ 최대체력 보너스(가구): +${bonuses.maxHpBonus||0} · 배고픔최대 +${bonuses.maxHungerBonus||0}` +
                         (bonuses.tier >= 2 ? '<br>🍽 배고픔 저항 보너스 활성' : '');
                 }
             }
             if (dexList) {
                 let dexHtml = '';
-                masterShopItems.filter(i => i.type !== 'food' && i.type !== 'lottery').forEach(item => {
+                const rarityColor = {common:'#95a5a6',uncommon:'#27ae60',rare:'#3498db',epic:'#9b59b6',legendary:'#e67e22',mythic:'#e74c3c'};
+                const rarityName = {common:'커먼',uncommon:'언커먼',rare:'레어',epic:'에픽',legendary:'레전더리',mythic:'신화'};
+                masterShopItems.filter(i => isFurnitureItem(i)).forEach(item => {
+                    const rc = rarityColor[item.rarity] || '#333';
+                    const rn = rarityName[item.rarity] || '';
                     dexHtml += `<tr>
-                        <td><strong>${item.name}</strong></td>
+                        <td><strong style="color:${rc}">${item.name}</strong> <span style="font-size:0.75em;color:${rc}">[${rn}]</span></td>
                         <td>${item.effect}</td>
                         <td>${item.owned ? '<span style="color:#27ae60;font-weight:bold;">✔ 수집완료</span>' : '<span style="color:#999;">미수집</span>'}</td>
                     </tr>`;
